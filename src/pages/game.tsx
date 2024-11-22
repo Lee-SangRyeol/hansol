@@ -45,6 +45,7 @@ const Game = () => {
     if (!socket) {
       socket = io({
         path: "/api/socket",
+        transports: ['websocket'] 
       });
 
       socket.on("connect", () => {

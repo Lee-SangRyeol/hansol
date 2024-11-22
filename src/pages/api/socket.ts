@@ -31,13 +31,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponseS
       path: "/api/socket",
       addTrailingSlash: false,
       cors: {
-        origin: process.env.NEXTAUTH_URL,
+        origin: "*",
         methods: ["GET", "POST"],
         credentials: true
       },
-      transports: ['websocket'],
-      pingInterval: 10000,
-      pingTimeout: 5000,
+      transports: ['websocket']
     });
 
     let buzzerOrder: string[] = [];

@@ -52,6 +52,7 @@ const ScoreAdmin = () => {
   useEffect(() => {
     const socketInstance = io({
       path: "/api/socket",
+      transports: ['websocket'] 
     });
 
     setSocket(socketInstance);

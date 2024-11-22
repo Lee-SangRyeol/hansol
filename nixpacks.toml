@@ -1,8 +1,9 @@
 [phases.setup]
-nixPkgs = ['nodejs', 'yarn']
+nixPkgs = ['nodejs-18_x', 'yarn']
+aptPkgs = ['python3']
 
 [phases.install]
-cmds = ['yarn install --frozen-lockfile']
+cmds = ['yarn install']
 
 [phases.build]
 cmds = ['yarn build']

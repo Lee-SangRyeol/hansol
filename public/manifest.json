@@ -1,0 +1,37 @@
+{
+  "name": "HanSol",
+  "short_name": "HanSol",
+  "description": "한울이와 함께하는 솔로몬팀 MT",
+  "icons": [
+    {
+      "src": "/icons/main.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/main.png",
+      "sizes": "96x96",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/main.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/favicon.ico",
+      "sizes": "256x256",
+      "type": "image/png"
+    },
+    {
+      "src": "/favicon.ico",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#7D7E80",
+  "display": "standalone",
+  "theme_color": "#7D7E80"
+}

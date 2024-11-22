@@ -1,44 +1,28 @@
 import mongoose from 'mongoose';
 
-if (!process.env.MONGODB_URI) {
-  throw new Error('MONGODB_URI가 없습니다.');
-}
-
-interface Cached {
+interface GlobalMongoose {
   conn: typeof mongoose | null;
   promise: Promise<typeof mongoose> | null;
 }
 
-const cached: Cached = (global as any).mongoose || { conn: null, promise: null };
-
-if (process.env.NODE_ENV === 'development') {
-  (global as any).mongoose = cached;
+// augment the global scope
+declare global {
+  const mongoose: GlobalMongoose | undefined;
 }
 
-export const connectDB = async () => {
+const cached: GlobalMongoose = {
+  conn: null,
+  promise: null,
+};
+
+export async function connectDB() {
   if (cached.conn) {
     return cached.conn;
   }
 
   if (!cached.promise) {
-    const opts = {
-      bufferCommands: true,
-    };
-
-    cached.promise = mongoose.connect(process.env.MONGODB_URI!, opts)
-      .then((mongoose) => {
-        console.log('MongoDB 연결 성공!');
-        return mongoose;
-      });
+    cached.promise = mongoose.connect(process.env.MONGODB_URI!);
   }
-
-  try {
-    cached.conn = await cached.promise;
-  } catch (error) {
-    cached.promise = null;
-    console.error('MongoDB 연결 실패:', error);
-    throw error;
-  }
-
+  cached.conn = await cached.promise;
   return cached.conn;
-}; 
+} 

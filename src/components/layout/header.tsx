@@ -2,16 +2,14 @@ import { useState } from "react";
 import { useSession, signIn } from "next-auth/react";
 import styled from "styled-components";
 import { RiKakaoTalkFill } from "react-icons/ri";
-import { FaUser, FaQuestionCircle } from "react-icons/fa";
-import { colors, fonts } from "@/constants";
+import { FaUser } from "react-icons/fa";
+import { fonts } from "@/constants";
 import Image from "next/image";
-import { useRouter } from "next/router";
 import ProfileModal from "../modal/ProfileModal";
 import { AnimatePresence } from "framer-motion";
 
 const Header = () => {
-  const { data: session, status } = useSession();
-  const router = useRouter();
+  const { data: session} = useSession();
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   return (

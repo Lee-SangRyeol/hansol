@@ -1,16 +1,14 @@
 import React, { useState, useEffect } from "react";
 import styled, { keyframes } from "styled-components";
-import { colors, fonts } from "@/constants";
+import { fonts } from "@/constants";
 
 interface ToastProps {
   message: string;
 }
 
-let toastId = 0;
 const toastListeners: ((toast: ToastProps) => void)[] = [];
 
 export const showToast = (message: string) => {
-  toastId++;
   toastListeners.forEach((listener) => listener({ message }));
 };
 

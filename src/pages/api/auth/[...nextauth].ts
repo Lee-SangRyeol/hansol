@@ -39,9 +39,9 @@ export const authOptions: NextAuthOptions = {
       }
       return session;
     },
-    async jwt({ token, account, profile }) {
-      if (account && profile) {
-        token.accessToken = account.access_token;
+    async jwt({ token, profile , account }) {
+      if (profile) {
+        token.accessToken = account?.access_token;
         // Kakao profile 타입을 명시적으로 지정
         const kakaoProfile = profile as { 
           properties?: { profile_image?: string }
@@ -52,7 +52,7 @@ export const authOptions: NextAuthOptions = {
       }
       return token;
     },
-    async signIn({ user, account, profile }) {
+    async signIn({ user, profile }) {
       try {
         await connectDB();
         

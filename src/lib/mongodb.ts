@@ -9,7 +9,7 @@ interface Cached {
   promise: Promise<typeof mongoose> | null;
 }
 
-let cached: Cached = (global as any).mongoose || { conn: null, promise: null };
+const cached: Cached = (global as any).mongoose || { conn: null, promise: null };
 
 if (process.env.NODE_ENV === 'development') {
   (global as any).mongoose = cached;

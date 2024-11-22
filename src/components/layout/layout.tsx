@@ -38,11 +38,4 @@ const MainContent = styled.main`
   flex: 1;
 `;
 
-const ProfileIcon = styled.div`
-  position: fixed;
-  top: 16px;
-  right: 16px;
-  cursor: pointer;
-`;
-
 export default Layout;

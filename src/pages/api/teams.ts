@@ -2,6 +2,12 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectDB } from '@/lib/mongodb';
 import Team from '@/models/Team';
 
+interface TeamUpdate {
+  teamName?: string;
+  members?: string[];
+  totalScore?: number;
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'GET') {
     try {
@@ -34,9 +40,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method === 'POST') {
     try {
       await connectDB();
-      const team = await Team.create(req.body);
+      const team = await Team.create(req.body as TeamUpdate);
       return res.status(201).json({ team });
     } catch (error) {
+      console.error('Error:', error);
       return res.status(500).json({ error: '팀 생성 실패' });
     }
   }

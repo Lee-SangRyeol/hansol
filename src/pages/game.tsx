@@ -6,39 +6,39 @@ import { io, Socket } from "socket.io-client";
 import { useSession } from "next-auth/react";
 import { Fa1, Fa2, Fa3, Fa4, Fa5 } from "react-icons/fa6";
 import { showToast } from "@/components/toastBar";
-import { RxEnter } from "react-icons/rx";
 import { useRouter } from "next/navigation";
 
-// 타입 정의
-interface BuzzerButtonProps {
-  isBuzzing: boolean;
-}
-
-interface ConnectionStatusProps {
-  connected: boolean;
-}
-
 let socket: Socket | null = null;
-let buzzerOrder: string[] = [];
 
 const Game = () => {
   const { data: session } = useSession();
   const router = useRouter();
+  const [isConnected, setIsConnected] = useState<boolean>(false);
+  const [messages, setMessages] = useState<string[]>([]);
+  const [isBuzzing, setIsBuzzing] = useState<boolean>(false);
 
   useEffect(() => {
     if (!session?.user?.name) {
       showToast('로그인ㄱ');
       router.replace('/');
+      return;
     }
+
+    handleConnect();
+
+    return () => {
+      if (socket) {
+        socket.disconnect();
+        socket = null;
+        setIsConnected(false);
+        setMessages([]);
+      }
+    };
   }, [session, router]);
 
   if (!session?.user?.name) {
     return null;
   }
-
-  const [isConnected, setIsConnected] = useState<boolean>(false);
-  const [messages, setMessages] = useState<string[]>([]);
-  const [isBuzzing, setIsBuzzing] = useState<boolean>(false);
 
   // 소켓 연결 핸들러
   const handleConnect = () => {
@@ -88,20 +88,6 @@ const Game = () => {
       socket.emit("reset_buzzer");
     }
   };
-
-  useEffect(() => {
-    handleConnect();
-
-    // cleanup function
-    return () => {
-      if (socket) {
-        socket.disconnect();
-        socket = null;
-        setIsConnected(false);
-        setMessages([]);
-      }
-    };
-  }, []);
 
   return (
     <Container>

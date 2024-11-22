@@ -3,8 +3,7 @@ import styled from "styled-components";
 import { colors, fonts } from "@/constants";
 import Layout from "../components/layout/layout";
 import { GiTrophyCup } from "react-icons/gi";
-import { io } from "socket.io-client";
-import { RxEnter } from "react-icons/rx";
+import { io, Socket } from "socket.io-client";
 import { useSession } from "next-auth/react";
 import React from "react";
 
@@ -37,7 +36,7 @@ const ScoreAdmin = () => {
   const [userData, setUserData] = useState<UserData[]>([]);
   const [reasons, setReasons] = useState<string[]>(["", "", ""]);
   const [scores, setScores] = useState<string[]>(["", "", ""]);
-  const [socket, setSocket] = useState<any>(null);
+  const [socket, setSocket] = useState<Socket | null>(null);
   const [soloReasons, setSoloReasons] = useState<string[]>([]);
   const [soloScores, setSoloScores] = useState<string[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -73,10 +72,10 @@ const ScoreAdmin = () => {
   }, []);
 
   const handleScoreUpdate = (index: number) => {
-    if (!reasons[index] || !scores[index]) return;
+    if (!reasons[index] || !scores[index] || !socket) return;
 
     socket.emit(
-      "team_score_update",
+      "team_score_update", 
       teamData[index]?.name,
       reasons[index],
       Number(scores[index])
@@ -92,10 +91,10 @@ const ScoreAdmin = () => {
   };
 
   const handleSoloScoreUpdate = (index: number) => {
-    if (!soloReasons[index] || !soloScores[index]) return;
+    if (!soloReasons[index] || !soloScores[index] || !socket) return;
 
     socket.emit(
-      "solo_score_update",
+      "solo_score_update", 
       userData[index]?.name,
       soloReasons[index],
       Number(soloScores[index])
@@ -471,42 +470,8 @@ const Divider = styled.div`
   border: 1px dashed ${colors.grayscale.$04};
 `;
 
-const AdminButton = styled.a`
-  position: absolute;
-  bottom: 14%;
-  right: 16px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  color: #ffffff;
-  font-size: 24px;
-  font-weight: bold;
-  text-decoration: none;
-  color: ${colors.grayscale.$11};
-  background: linear-gradient(
-    145deg,
-    ${colors.grayscale.$02},
-    ${colors.grayscale.$03}
-  );
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-  transition: all 0.2s ease;
-  z-index: 10;
 
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  }
 
-  &:active {
-    transform: translateY(0);
-  }
-
-  svg {
-    font-size: 20px;
-  }
-`;
 
 const SoloScoreContainer = styled.div`
   display: flex;

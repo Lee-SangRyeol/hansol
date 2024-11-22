@@ -1,10 +1,9 @@
-import { useEffect, useState } from 'react';
-import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/router';
-import styled from 'styled-components';
-import { motion } from 'framer-motion';
-import Image from 'next/image';
-import { colors, fonts } from '@/constants';
+import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
+import styled from "styled-components";
+import { motion } from "framer-motion";
+import Image from "next/image";
+import { colors, fonts } from "@/constants";
 
 interface ProfileModalProps {
   isOpen: boolean;
@@ -29,10 +28,11 @@ interface TeamScore {
 
 const ProfileModal = ({ isOpen, onClose }: ProfileModalProps) => {
   const { data: session } = useSession();
-  const router = useRouter();
   const [userData, setUserData] = useState<User | null>(null);
   const [teamData, setTeamData] = useState<Team | null>(null);
-  const [memberScores, setMemberScores] = useState<{[key: string]: number}>({});
+  const [memberScores, setMemberScores] = useState<{ [key: string]: number }>(
+    {}
+  );
 
   useEffect(() => {
     const fetchTeamData = async () => {
@@ -40,23 +40,27 @@ const ProfileModal = ({ isOpen, onClose }: ProfileModalProps) => {
 
       try {
         // 유저의 팀 정보 가져오기
-        const userResponse = await fetch(`/api/users?name=${encodeURIComponent(session.user.name)}`);
+        const userResponse = await fetch(
+          `/api/users?name=${encodeURIComponent(session.user.name)}`
+        );
         if (!userResponse.ok) {
-          throw new Error('Failed to fetch user data');
+          throw new Error("Failed to fetch user data");
         }
         const userData: User = await userResponse.json();
-       
+
         if (!userData.team) {
           setTeamData(null);
           return;
-        }else if(userData.team){
+        } else if (userData.team) {
           setUserData(userData);
         }
 
         // 팀 정보 가져오기
-        const teamResponse = await fetch(`/api/teams?name=${encodeURIComponent(userData.team)}`);
+        const teamResponse = await fetch(
+          `/api/teams?name=${encodeURIComponent(userData.team)}`
+        );
         if (!teamResponse.ok) {
-          throw new Error('Failed to fetch team data');
+          throw new Error("Failed to fetch team data");
         }
 
         const teamData: Team = await teamResponse.json();
@@ -64,21 +68,21 @@ const ProfileModal = ({ isOpen, onClose }: ProfileModalProps) => {
         if (!teamData) {
           setTeamData(null);
           return;
-        }else if(teamData){
+        } else if (teamData) {
           setTeamData(teamData);
         }
 
         // 멤버들의 점수를 한 번에 가져오기
         const memberScoresResponse = await fetch(
-          `/api/users?names=${encodeURIComponent(teamData.members.join(','))}`
+          `/api/users?names=${encodeURIComponent(teamData.members.join(","))}`
         );
         if (!memberScoresResponse.ok) {
-          throw new Error('Failed to fetch member scores');
+          throw new Error("Failed to fetch member scores");
         }
         const memberScores = await memberScoresResponse.json();
         setMemberScores(memberScores);
       } catch (error) {
-        console.error('Error fetching team data:', error);
+        console.error("Error fetching team data:", error);
       }
     };
 
@@ -91,44 +95,48 @@ const ProfileModal = ({ isOpen, onClose }: ProfileModalProps) => {
     if (!session?.user?.name) return;
 
     try {
-      const response = await fetch('/api/teams/join', {
-        method: 'POST',
+      const response = await fetch("/api/teams/join", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          userName: session.user.name
-        })
+          userName: session.user.name,
+        }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to join team');
+        throw new Error("Failed to join team");
       }
 
       const data = await response.json();
-      
+
       if (data.success) {
         // 팀 배정 성공 시 데이터 다시 불러오기
         const fetchTeamData = async () => {
           if (!session?.user?.name) return;
 
           try {
-            const userResponse = await fetch(`/api/users?name=${encodeURIComponent(session.user.name)}`);
+            const userResponse = await fetch(
+              `/api/users?name=${encodeURIComponent(session.user.name)}`
+            );
             if (!userResponse.ok) {
-              throw new Error('Failed to fetch user data');
+              throw new Error("Failed to fetch user data");
             }
             const userData: User = await userResponse.json();
-            
+
             if (!userData.team) {
               setTeamData(null);
               return;
-            } else if(userData.team) {
+            } else if (userData.team) {
               setUserData(userData);
             }
 
-            const teamResponse = await fetch(`/api/teams?name=${encodeURIComponent(userData.team)}`);
+            const teamResponse = await fetch(
+              `/api/teams?name=${encodeURIComponent(userData.team)}`
+            );
             if (!teamResponse.ok) {
-              throw new Error('Failed to fetch team data');
+              throw new Error("Failed to fetch team data");
             }
 
             const teamData: Team = await teamResponse.json();
@@ -136,27 +144,29 @@ const ProfileModal = ({ isOpen, onClose }: ProfileModalProps) => {
             if (!teamData) {
               setTeamData(null);
               return;
-            } else if(teamData) {
+            } else if (teamData) {
               setTeamData(teamData);
             }
 
             const memberScoresResponse = await fetch(
-              `/api/users?names=${encodeURIComponent(teamData.members.join(','))}`
+              `/api/users?names=${encodeURIComponent(
+                teamData.members.join(",")
+              )}`
             );
             if (!memberScoresResponse.ok) {
-              throw new Error('Failed to fetch member scores');
+              throw new Error("Failed to fetch member scores");
             }
             const memberScores = await memberScoresResponse.json();
             setMemberScores(memberScores);
           } catch (error) {
-            console.error('Error fetching team data:', error);
+            console.error("Error fetching team data:", error);
           }
         };
 
         fetchTeamData();
       }
     } catch (error) {
-      console.error('Error joining team:', error);
+      console.error("Error joining team:", error);
       // 에러 처리 (필요한 경우 사용자에게 알림)
     }
   };
@@ -177,22 +187,22 @@ const ProfileModal = ({ isOpen, onClose }: ProfileModalProps) => {
         onClick={(e) => e.stopPropagation()}
       >
         <CloseButton onClick={onClose}>&times;</CloseButton>
-        
+
         <ProfileSection>
           <ProfileImageWrapper>
             {session?.user?.image ? (
               <StyledImage>
-                <Image 
-                  src={session.user.image} 
-                  alt="Profile" 
-                  width={120} 
+                <Image
+                  src={session.user.image}
+                  alt="Profile"
+                  width={120}
                   height={120}
-                  style={{ borderRadius: '50%' }}
+                  style={{ borderRadius: "50%" }}
                 />
               </StyledImage>
             ) : (
               <DefaultProfileImage>
-                {session?.user?.name?.[0]?.toUpperCase() || '?'}
+                {session?.user?.name?.[0]?.toUpperCase() || "?"}
               </DefaultProfileImage>
             )}
           </ProfileImageWrapper>
@@ -201,7 +211,9 @@ const ProfileModal = ({ isOpen, onClose }: ProfileModalProps) => {
 
         <TeamSection>
           <SectionHeader>
-            <SectionTitle>{userData?.team ? "소속팀" : '팀 배정 대기중'}</SectionTitle>
+            <SectionTitle>
+              {userData?.team ? "소속팀" : "팀 배정 대기중"}
+            </SectionTitle>
           </SectionHeader>
           <TeamCard>
             {teamData ? (
@@ -215,7 +227,9 @@ const ProfileModal = ({ isOpen, onClose }: ProfileModalProps) => {
                   {teamData.members.map((memberName) => (
                     <MemberItem key={memberName}>
                       <MemberName>{memberName}</MemberName>
-                      <MemberScore>{memberScores[memberName] || 0} 점</MemberScore>
+                      <MemberScore>
+                        {memberScores[memberName] || 0} 점
+                      </MemberScore>
                     </MemberItem>
                   ))}
                 </MemberList>
@@ -233,10 +247,11 @@ const ProfileModal = ({ isOpen, onClose }: ProfileModalProps) => {
       </ModalContent>
     </ModalOverlay>
   );
-};const MemberList = styled.ul`
-list-style: none;
-padding: 0;
-margin: 0;
+};
+const MemberList = styled.ul`
+  list-style: none;
+  padding: 0;
+  margin: 0;
 `;
 
 const TeamCard = styled.div`
@@ -320,8 +335,7 @@ const CloseButton = styled.button`
   }
 `;
 
-const StyledImage = styled.div`
-`;
+const StyledImage = styled.div``;
 
 const SectionHeader = styled.div`
   display: flex;
@@ -329,7 +343,6 @@ const SectionHeader = styled.div`
   align-items: center;
   margin-bottom: 16px;
 `;
-
 
 const TeamHeader = styled.div`
   display: flex;

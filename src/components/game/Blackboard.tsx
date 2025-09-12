@@ -22,7 +22,6 @@ const Blackboard = () => {
   const [isConnected, setIsConnected] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [showModal, setShowModal] = useState(false);
-  const [draggedItem, setDraggedItem] = useState<string | null>(null);
   const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
@@ -87,17 +86,20 @@ const Blackboard = () => {
   ) => {
     if (socketRef.current) {
       console.log("Adding game content:", { gameType, category, content });
+      // 기존 아이템들을 모두 제거하고 새 아이템만 추가
+      socketRef.current.emit("clear_blackboard");
+
       const newItem: Omit<BlackboardItem, "id" | "timestamp"> = {
         type: "game",
         content,
-        position: { x: Math.random() * 300 + 50, y: Math.random() * 200 + 50 },
-        size: { width: 300, height: 100 },
+        position: { x: 0, y: 0 }, // 중앙 정렬을 위해 0,0으로 설정
+        size: { width: 100, height: 100 }, // 크기는 CSS에서 조정
         gameType,
         category,
       };
       console.log("Emitting add_blackboard_item:", newItem);
       socketRef.current.emit("add_blackboard_item", newItem);
-      setShowModal(false);
+      //   setShowModal(false);
     } else {
       console.error("Socket not connected");
     }
@@ -117,41 +119,26 @@ const Blackboard = () => {
     }
   };
 
-  const handleDragStart = (e: React.DragEvent, itemId: string) => {
-    if (!isAdmin) return;
-    setDraggedItem(itemId);
-    e.dataTransfer.effectAllowed = "move";
-  };
+  const handleTestAdd = () => {
+    if (socketRef.current) {
+      console.log("Test adding item...");
+      // 기존 아이템들을 모두 제거하고 새 아이템만 추가
+      socketRef.current.emit("clear_blackboard");
 
-  const handleDragEnd = () => {
-    setDraggedItem(null);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    if (!isAdmin || !draggedItem || !socketRef.current) return;
-
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    console.log("Updating item position:", draggedItem, { x, y });
-    socketRef.current.emit("update_blackboard_item", draggedItem, {
-      position: { x, y },
-    });
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
+      const testItem: Omit<BlackboardItem, "id" | "timestamp"> = {
+        type: "text",
+        content: "테스트 아이템",
+        position: { x: 0, y: 0 },
+        size: { width: 100, height: 100 },
+      };
+      socketRef.current.emit("add_blackboard_item", testItem);
+    }
   };
 
   const renderBlackboardItem = (item: BlackboardItem) => {
     if (item.type === "game") {
       return (
         <GameContent>
-          <GameType>{item.gameType}</GameType>
-          <GameCategory>{item.category}</GameCategory>
           <GameText>{item.content}</GameText>
         </GameContent>
       );
@@ -162,27 +149,10 @@ const Blackboard = () => {
     }
   };
 
-  const handleTestAdd = () => {
-    if (socketRef.current) {
-      console.log("Test adding item...");
-      const testItem: Omit<BlackboardItem, "id" | "timestamp"> = {
-        type: "text",
-        content: "테스트 아이템",
-        position: { x: 100, y: 100 },
-        size: { width: 200, height: 50 },
-      };
-      socketRef.current.emit("add_blackboard_item", testItem);
-    }
-  };
-
   return (
     <Container>
       <TopCard>
-        <BlackboardArea
-          onDrop={handleDrop}
-          onDragOver={handleDragOver}
-          $isAdmin={isAdmin}
-        >
+        <BlackboardArea $isAdmin={isAdmin}>
           {blackboardItems.length === 0 ? (
             <EmptyState>
               <EmptyIcon>📝</EmptyIcon>
@@ -201,24 +171,18 @@ const Blackboard = () => {
               </DebugInfo>
             </EmptyState>
           ) : (
-            blackboardItems.map((item) => (
-              <BlackboardItemWrapper
-                key={item.id}
-                $position={item.position}
-                $size={item.size}
-                $isAdmin={isAdmin}
-                draggable={isAdmin}
-                onDragStart={(e) => handleDragStart(e, item.id)}
-                onDragEnd={handleDragEnd}
-              >
-                {renderBlackboardItem(item)}
-                {isAdmin && (
-                  <DeleteButton onClick={() => handleDeleteItem(item.id)}>
-                    ✕
-                  </DeleteButton>
-                )}
-              </BlackboardItemWrapper>
-            ))
+            <SingleItemContainer>
+              {blackboardItems.map((item) => (
+                <div key={item.id}>
+                  {renderBlackboardItem(item)}
+                  {isAdmin && (
+                    <DeleteButton onClick={() => handleDeleteItem(item.id)}>
+                      ✕
+                    </DeleteButton>
+                  )}
+                </div>
+              ))}
+            </SingleItemContainer>
           )}
         </BlackboardArea>
       </TopCard>
@@ -229,9 +193,7 @@ const Blackboard = () => {
             <ControlButton onClick={() => setShowModal(true)}>
               게임 내용 추가
             </ControlButton>
-            <ControlButton onClick={handleTestAdd}>
-              테스트 추가
-            </ControlButton>
+            <ControlButton onClick={handleTestAdd}>테스트 추가</ControlButton>
             <ControlButton onClick={handleClearAll} $danger>
               전체 삭제
             </ControlButton>
@@ -286,6 +248,9 @@ const BlackboardArea = styled.div<{ $isAdmin: boolean }>`
   overflow: hidden;
   cursor: ${(props) => (props.$isAdmin ? "crosshair" : "default")};
   min-height: 400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 `;
 
 const EmptyState = styled.div`
@@ -326,93 +291,76 @@ const DebugInfo = styled.div`
   font-size: 12px;
   color: rgba(255, 255, 255, 0.6);
   text-align: left;
-  
+
   div {
     margin-bottom: 4px;
   }
 `;
 
-const BlackboardItemWrapper = styled.div<{
-  $position: { x: number; y: number };
-  $size: { width: number; height: number };
-  $isAdmin: boolean;
-}>`
-  position: absolute;
-  left: ${(props) => props.$position.x}px;
-  top: ${(props) => props.$position.y}px;
-  width: ${(props) => props.$size.width}px;
-  height: ${(props) => props.$size.height}px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-radius: 8px;
-  padding: 12px;
-  backdrop-filter: blur(10px);
-  cursor: ${(props) => (props.$isAdmin ? "move" : "default")};
-  transition: all 0.2s ease;
-  z-index: 1;
-
-  &:hover {
-    background: rgba(255, 255, 255, 0.15);
-    border-color: rgba(255, 255, 255, 0.5);
-    transform: scale(1.02);
-  }
+const SingleItemContainer = styled.div`
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 `;
 
 const TextContent = styled.div`
-  font-family: ${fonts.pretendard.$500};
-  font-size: 16px;
+  font-family: ${fonts.pretendard.$700};
+  font-size: 28px;
   color: white;
+  text-align: center;
+  line-height: 1.2;
   word-wrap: break-word;
-  height: 100%;
-  overflow: hidden;
+  max-width: 90%;
 `;
 
 const ImageContent = styled.img`
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: 4px;
+  max-width: 90%;
+  max-height: 90%;
+  object-fit: contain;
+  border-radius: 8px;
 `;
 
 const GameContent = styled.div`
   display: flex;
   flex-direction: column;
-  height: 100%;
-  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 20px;
+  max-width: 90%;
 `;
 
 const GameType = styled.div`
   font-family: ${fonts.pretendard.$700};
-  font-size: 14px;
+  font-size: 24px;
   color: #667eea;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 2px;
 `;
 
 const GameCategory = styled.div`
   font-family: ${fonts.pretendard.$600};
-  font-size: 12px;
+  font-size: 20px;
   color: #f39c12;
 `;
 
 const GameText = styled.div`
-  font-family: ${fonts.pretendard.$500};
-  font-size: 18px;
+  font-family: ${fonts.pretendard.$700};
+  font-size: 28px;
   color: white;
   word-wrap: break-word;
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
+  line-height: 1.2;
 `;
 
 const DeleteButton = styled.button`
   position: absolute;
-  top: -8px;
-  right: -8px;
-  width: 24px;
-  height: 24px;
+  top: 20px;
+  right: 20px;
+  width: 40px;
+  height: 40px;
   border: none;
   background: #e74c3c;
   color: white;
@@ -421,7 +369,7 @@ const DeleteButton = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: 14px;
   transition: all 0.2s ease;
   z-index: 2;
 

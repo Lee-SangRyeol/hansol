@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import styled from "styled-components";
 import { colors, fonts } from "@/constants";
 import { gameData, GameData, GameCategory } from "@/data/gameData";
@@ -8,16 +8,48 @@ interface BlackboardModalProps {
   onAddContent: (gameType: string, category: string, content: string) => void;
 }
 
+interface Team {
+  _id: string;
+  name: string;
+  members: string[];
+  totalScore: number;
+}
+
 const BlackboardModal = ({ onClose, onAddContent }: BlackboardModalProps) => {
   const [selectedGame, setSelectedGame] = useState<GameData | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<GameCategory | null>(
     null
   );
   const [currentItemIndex, setCurrentItemIndex] = useState(0);
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [loadingTeams, setLoadingTeams] = useState(false);
+
+  // 팀 목록 가져오기
+  const fetchTeams = async () => {
+    setLoadingTeams(true);
+    try {
+      const response = await fetch("/api/teams");
+      if (response.ok) {
+        const data = await response.json();
+        setTeams(data.teams || []);
+      }
+    } catch (error) {
+      console.error("Error fetching teams:", error);
+    } finally {
+      setLoadingTeams(false);
+    }
+  };
 
   const handleGameSelect = (game: GameData) => {
     setSelectedGame(game);
-    setSelectedCategory(game.categories[0]);
+    
+    // 팀지목인 경우 팀 목록을 가져옴
+    if (game.id === "team-selection") {
+      fetchTeams();
+      setSelectedCategory(null);
+    } else {
+      setSelectedCategory(game.categories[0]);
+    }
     setCurrentItemIndex(0);
   };
 
@@ -28,24 +60,40 @@ const BlackboardModal = ({ onClose, onAddContent }: BlackboardModalProps) => {
 
   const handlePreviousItem = () => {
     if (selectedCategory) {
-      setCurrentItemIndex((prev) =>
-        prev === 0 ? selectedCategory.items.length - 1 : prev - 1
-      );
+      const newIndex = currentItemIndex === 0 ? selectedCategory.items.length - 1 : currentItemIndex - 1;
+      setCurrentItemIndex(newIndex);
+      
+      // 칠판에 즉시 업데이트
+      if (selectedGame && selectedCategory) {
+        const content = selectedCategory.items[newIndex];
+        onAddContent(selectedGame.name, selectedCategory.name, content);
+      }
     }
   };
 
   const handleNextItem = () => {
     if (selectedCategory) {
-      setCurrentItemIndex((prev) =>
-        prev === selectedCategory.items.length - 1 ? 0 : prev + 1
-      );
+      const newIndex = currentItemIndex === selectedCategory.items.length - 1 ? 0 : currentItemIndex + 1;
+      setCurrentItemIndex(newIndex);
+      
+      // 칠판에 즉시 업데이트
+      if (selectedGame && selectedCategory) {
+        const content = selectedCategory.items[newIndex];
+        onAddContent(selectedGame.name, selectedCategory.name, content);
+      }
     }
+  };
+
+  const handleTeamSelect = (team: Team) => {
+    // 팀 이름만 칠판에 표시
+    onAddContent("팀 지목", "팀 목록", team.name);
   };
 
   const handleAddToBlackboard = () => {
     if (selectedGame && selectedCategory) {
       const content = selectedCategory.items[currentItemIndex];
       onAddContent(selectedGame.name, selectedCategory.name, content);
+      // 모달을 닫지 않음
     }
   };
 
@@ -53,6 +101,7 @@ const BlackboardModal = ({ onClose, onAddContent }: BlackboardModalProps) => {
     setSelectedGame(null);
     setSelectedCategory(null);
     setCurrentItemIndex(0);
+    setTeams([]);
   };
 
   const handleBackToCategories = () => {
@@ -97,6 +146,34 @@ const BlackboardModal = ({ onClose, onAddContent }: BlackboardModalProps) => {
                 ))}
               </GameList>
             </GameSelection>
+          ) : selectedGame.id === "team-selection" ? (
+            <TeamSelection>
+              <SectionHeader>
+                <BackButton onClick={handleBackToGames}>← 뒤로</BackButton>
+                <SectionTitle>팀 지목</SectionTitle>
+              </SectionHeader>
+              
+              {loadingTeams ? (
+                <LoadingText>팀 목록을 불러오는 중...</LoadingText>
+              ) : teams.length === 0 ? (
+                <NoTeamsText>등록된 팀이 없습니다</NoTeamsText>
+              ) : (
+                <TeamList>
+                  {teams.map((team) => (
+                    <TeamCard
+                      key={team._id}
+                      onClick={() => handleTeamSelect(team)}
+                    >
+                      <TeamName>{team.name}</TeamName>
+                      <TeamInfo>
+                        <TeamMembers>{team.members.length}명</TeamMembers>
+                        <TeamScore>{team.totalScore}점</TeamScore>
+                      </TeamInfo>
+                    </TeamCard>
+                  ))}
+                </TeamList>
+              )}
+            </TeamSelection>
           ) : !selectedCategory ? (
             <CategorySelection>
               <SectionHeader>
@@ -130,7 +207,8 @@ const BlackboardModal = ({ onClose, onAddContent }: BlackboardModalProps) => {
                       alt="Movie poster"
                       onError={(e) => {
                         e.currentTarget.style.display = "none";
-                        const placeholder = e.currentTarget.nextElementSibling as HTMLElement;
+                        const placeholder = e.currentTarget
+                          .nextElementSibling as HTMLElement;
                         if (placeholder) {
                           placeholder.style.display = "flex";
                         }
@@ -159,6 +237,9 @@ const BlackboardModal = ({ onClose, onAddContent }: BlackboardModalProps) => {
                 <AddButton onClick={handleAddToBlackboard}>
                   칠판에 추가
                 </AddButton>
+                <InfoText>
+                  화살표를 눌러서 다음/이전 항목을 확인하세요
+                </InfoText>
               </ActionButtons>
             </ItemSelection>
           )}
@@ -300,6 +381,71 @@ const GameName = styled.div`
   color: white;
 `;
 
+const TeamSelection = styled.div``;
+
+const TeamList = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+`;
+
+const TeamCard = styled.div`
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  padding: 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: #f39c12;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(243, 156, 18, 0.3);
+  }
+`;
+
+const TeamName = styled.div`
+  font-family: ${fonts.pretendard.$700};
+  font-size: 20px;
+  color: white;
+  margin-bottom: 12px;
+`;
+
+const TeamInfo = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+`;
+
+const TeamMembers = styled.div`
+  font-family: ${fonts.pretendard.$500};
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.7);
+`;
+
+const TeamScore = styled.div`
+  font-family: ${fonts.pretendard.$600};
+  font-size: 14px;
+  color: #f39c12;
+`;
+
+const LoadingText = styled.div`
+  font-family: ${fonts.pretendard.$500};
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.7);
+  text-align: center;
+  padding: 40px;
+`;
+
+const NoTeamsText = styled.div`
+  font-family: ${fonts.pretendard.$500};
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.7);
+  text-align: center;
+  padding: 40px;
+`;
+
 const CategorySelection = styled.div``;
 
 const CategoryList = styled.div`
@@ -388,8 +534,8 @@ const NavigationControls = styled.div`
 `;
 
 const NavButton = styled.button`
-  width: 40px;
-  height: 40px;
+  width: 50px;
+  height: 50px;
   border: none;
   background: linear-gradient(145deg, #667eea, #764ba2);
   color: white;
@@ -398,7 +544,7 @@ const NavButton = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
+  font-size: 24px;
   font-weight: bold;
   transition: all 0.2s ease;
 
@@ -419,7 +565,8 @@ const ItemCounter = styled.div`
 
 const ActionButtons = styled.div`
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
   gap: 16px;
 `;
 
@@ -439,6 +586,13 @@ const AddButton = styled.button`
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(39, 174, 96, 0.4);
   }
+`;
+
+const InfoText = styled.div`
+  font-family: ${fonts.pretendard.$500};
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.7);
+  text-align: center;
 `;
 
 export default BlackboardModal;

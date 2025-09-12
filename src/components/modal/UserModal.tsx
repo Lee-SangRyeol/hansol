@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { colors, fonts } from "@/constants";
 import UserInfo from "./UserInfo";
 import RoleInfo from "./RoleInfo";
+import TmiInfo from "./TmiInfo";
 
 interface UserModalProps {
   isOpen: boolean;
@@ -24,7 +25,7 @@ interface User {
 
 const UserModal = ({ isOpen, onClose }: UserModalProps) => {
   const { data: session } = useSession();
-  const [activeTab, setActiveTab] = useState<"info" | "role">("info");
+  const [activeTab, setActiveTab] = useState<"info" | "role" | "tmi">("info");
   const [userData, setUserData] = useState<User | null>(null);
   const [teamData, setTeamData] = useState<Team | null>(null);
   const [memberScores, setMemberScores] = useState<{ [key: string]: number }>(
@@ -112,14 +113,25 @@ const UserModal = ({ isOpen, onClose }: UserModalProps) => {
           <TabButton
             $isActive={activeTab === "role"}
             onClick={() => setActiveTab("role")}
-            style={{ backgroundColor: colors.grayscale.$03 }}
           >
             내 역할
+          </TabButton>
+          <TabButton
+            $isActive={activeTab === "tmi"}
+            onClick={() => setActiveTab("tmi")}
+          >
+            TMI
           </TabButton>
         </TabContainer>
 
         <ContentContainer>
-          {activeTab === "info" ? <UserInfo /> : <RoleInfo />}
+          {activeTab === "info" ? (
+            <UserInfo />
+          ) : activeTab === "role" ? (
+            <RoleInfo />
+          ) : (
+            <TmiInfo />
+          )}
         </ContentContainer>
       </ModalContent>
     </ModalOverlay>
@@ -191,7 +203,7 @@ const TabContainer = styled.div`
 `;
 
 const TabButton = styled.button<{ $isActive: boolean }>`
-  width: 50%;
+  width: 33.333%;
   height: 100%;
   border: none;
   background-color: transparent;

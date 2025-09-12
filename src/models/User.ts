@@ -9,6 +9,7 @@ const userSchema = new mongoose.Schema(
     score: { type: Number, required: true, default: 0 },
     image: { type: String },
     character: { type: String, required: true, default: "" },
+    tmi: { type: String, default: "" },
   },
   { timestamps: true }
 );

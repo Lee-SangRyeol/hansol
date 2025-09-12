@@ -1,7 +1,7 @@
 import NextAuth, { DefaultSession, NextAuthOptions } from "next-auth";
 import KakaoProvider from "next-auth/providers/kakao";
-import { connectDB } from '@/lib/mongodb';
-import User from '@/models/User';
+import { connectDB } from "@/lib/mongodb";
+import User from "@/models/User";
 
 // 세션 타입 확장
 declare module "next-auth" {
@@ -10,7 +10,7 @@ declare module "next-auth" {
       id?: string;
       role?: string;
       image?: string;
-    } & DefaultSession["user"]
+    } & DefaultSession["user"];
   }
 }
 
@@ -35,16 +35,16 @@ export const authOptions: NextAuthOptions = {
         session.user.id = token.sub;
         session.user.image = token.picture;
         const dbUser = await User.findOne({ snsId: token.sub });
-        session.user.role = dbUser?.role || 'user';
+        session.user.role = dbUser?.role || "user";
       }
       return session;
     },
-    async jwt({ token, profile , account }) {
+    async jwt({ token, profile, account }) {
       if (profile) {
         token.accessToken = account?.access_token;
         // Kakao profile 타입을 명시적으로 지정
-        const kakaoProfile = profile as { 
-          properties?: { profile_image?: string }
+        const kakaoProfile = profile as {
+          properties?: { profile_image?: string };
         };
         if (kakaoProfile.properties) {
           token.picture = kakaoProfile.properties.profile_image;
@@ -55,21 +55,21 @@ export const authOptions: NextAuthOptions = {
     async signIn({ user, profile }) {
       try {
         await connectDB();
-        
+
         const kakaoProfile = profile as {
-          properties?: { profile_image?: string }
+          properties?: { profile_image?: string };
         };
         const profileImage = kakaoProfile.properties?.profile_image;
-        
+
         await User.findOneAndUpdate(
           { name: user.name },
           {
             snsId: user.id,
-            image: profileImage
+            image: profileImage,
           },
           { upsert: true, new: true }
         );
-        
+
         return true;
       } catch (error) {
         console.error("Error saving user:", error);
@@ -79,4 +79,4 @@ export const authOptions: NextAuthOptions = {
   },
 };
 
-export default NextAuth(authOptions); 
+export default NextAuth(authOptions);

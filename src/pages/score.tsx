@@ -50,9 +50,32 @@ const ScoreAdmin = () => {
   const [selectedUserName, setSelectedUserName] = useState("");
 
   useEffect(() => {
+    // 서버의 Socket.IO 인스턴스를 초기화
+    fetch("/api/socket").catch(() => {});
+
     const socketInstance = io({
       path: "/api/socket",
-      transports: ['websocket'] 
+      // polling 폴백 허용(초기 업그레이드 실패 대비)
+      transports: ["websocket", "polling"],
+      // 연결 안정화 옵션
+      timeout: 20000,
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+    });
+
+    // socketInstance.on("connect", () => {
+    //   console.log("[socket] connected:", socketInstance.id);
+    // });
+    // socketInstance.on("disconnect", (reason) => {
+    //   console.log("[socket] disconnected:", reason);
+    // });
+    socketInstance.on("connect_error", (err) => {
+      console.error("[socket] connect_error:", err.message);
+    });
+    socketInstance.io.on("reconnect_attempt", (attempt) => {
+      console.log("[socket] reconnect_attempt:", attempt);
     });
 
     setSocket(socketInstance);
@@ -68,7 +91,13 @@ const ScoreAdmin = () => {
     });
 
     return () => {
-      socketInstance.disconnect();
+      socketInstance.off("team_data");
+      socketInstance.off("user_data");
+      socketInstance.off("connect");
+      // socketInstance.off("disconnect");
+      socketInstance.off("connect_error");
+      socketInstance.io.off("reconnect_attempt");
+      // socketInstance.disconnect();
     };
   }, []);
 
@@ -76,7 +105,7 @@ const ScoreAdmin = () => {
     if (!reasons[index] || !scores[index] || !socket) return;
 
     socket.emit(
-      "team_score_update", 
+      "team_score_update",
       teamData[index]?.name,
       reasons[index],
       Number(scores[index])
@@ -95,7 +124,7 @@ const ScoreAdmin = () => {
     if (!soloReasons[index] || !soloScores[index] || !socket) return;
 
     socket.emit(
-      "solo_score_update", 
+      "solo_score_update",
       userData[index]?.name,
       soloReasons[index],
       Number(soloScores[index])
@@ -145,13 +174,13 @@ const ScoreAdmin = () => {
       <Container>
         <TabContainer>
           <TabButton
-            isActive={activeTab === "team"}
+            $isActive={activeTab === "team"}
             onClick={() => setActiveTab("team")}
           >
             TEAM
           </TabButton>
           <TabButton
-            isActive={activeTab === "solo"}
+            $isActive={activeTab === "solo"}
             onClick={() => setActiveTab("solo")}
           >
             SOLO
@@ -339,13 +368,13 @@ const TabContainer = styled.div`
   }
 `;
 
-const TabButton = styled.button<{ isActive: boolean }>`
+const TabButton = styled.button<{ $isActive: boolean }>`
   width: 50%;
   height: 100%;
   border: none;
   background-color: transparent;
   color: ${(props) =>
-    props.isActive ? colors.grayscale.$11 : colors.grayscale.$07};
+    props.$isActive ? colors.grayscale.$11 : colors.grayscale.$07};
   font-family: ${fonts.pretendard.$700};
   font-size: 28px;
   letter-spacing: 1px;
@@ -361,7 +390,7 @@ const TabButton = styled.button<{ isActive: boolean }>`
     width: 100%;
     height: 4px;
     background-color: ${(props) =>
-      props.isActive ? colors.grayscale.$11 : "transparent"};
+      props.$isActive ? colors.grayscale.$11 : "transparent"};
     transition: all 0.3s ease;
   }
 
@@ -470,9 +499,6 @@ const Divider = styled.div`
   height: 1px;
   border: 1px dashed ${colors.grayscale.$04};
 `;
-
-
-
 
 const SoloScoreContainer = styled.div`
   display: flex;

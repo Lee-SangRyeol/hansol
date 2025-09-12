@@ -5,20 +5,19 @@ import { RiKakaoTalkFill } from "react-icons/ri";
 import { FaUser } from "react-icons/fa";
 import { fonts } from "@/constants";
 import Image from "next/image";
-import ProfileModal from "../modal/ProfileModal";
+import UserModal from "../modal/UserModal";
 import { AnimatePresence } from "framer-motion";
 
 const Header = () => {
-  const { data: session} = useSession();
-  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const { data: session } = useSession();
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
 
   return (
     <>
       <HeaderLayout>
-        <IconWrapper>
-        </IconWrapper>
+        <IconWrapper></IconWrapper>
         {session ? (
-          <ProfileWrapper onClick={() => setIsProfileModalOpen(true)}>
+          <ProfileWrapper onClick={() => setIsUserModalOpen(true)}>
             {session.user?.image ? (
               <ProfileImage>
                 <Image
@@ -41,11 +40,11 @@ const Header = () => {
           </LoginButton>
         )}
       </HeaderLayout>
-      
+
       <AnimatePresence>
-        <ProfileModal 
-          isOpen={isProfileModalOpen} 
-          onClose={() => setIsProfileModalOpen(false)} 
+        <UserModal
+          isOpen={isUserModalOpen}
+          onClose={() => setIsUserModalOpen(false)}
         />
       </AnimatePresence>
     </>
@@ -97,9 +96,10 @@ const ProfileWrapper = styled.div`
   padding: 4px 8px;
   border-radius: 20px;
   transition: background-color 0.2s;
+  background-color: rgba(255, 255, 255, 0.1);
 
   &:hover {
-    background-color: rgba(255, 255, 255, 0.1);
+    background-color: rgba(255, 255, 255, 0);
   }
 `;
 

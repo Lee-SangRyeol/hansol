@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import styled from "styled-components";
 import Layout from "../components/layout/layout";
 import { ReactElement } from "react";
+import { io, Socket } from "socket.io-client";
+let socket: Socket;
 
 const Index = () => {
   const [isPWA, setIsPWA] = useState(false);
@@ -10,6 +12,14 @@ const Index = () => {
     if (typeof window !== "undefined") {
       setIsPWA(window.matchMedia("(display-mode: standalone)").matches);
     }
+
+    socket = io({
+      path: "/api/socket",
+    });
+
+    socket.on("connect", () => {
+      console.log("Connected to server:", socket.id);
+    });
   }, []);
 
   return <BackgroundWrapper>{isPWA ? <></> : <></>}</BackgroundWrapper>;

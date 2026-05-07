@@ -172,11 +172,11 @@ const Index = () => {
       <>
         <FixedCornerLogo>
           <Image
-            src="/pngs/coram__logo.png"
+            src="/pngs/Group 6.png"
             alt="CORAM DEO"
-            width={480}
-            height={160}
-            sizes="(max-width: 480px) 92vw, 560px"
+            width={800}
+            height={120}
+            sizes="(max-width: 800px) 92vw, 560px"
             draggable={false}
             style={{ ...homeCoramLogoStyle, pointerEvents: "none" }}
           />
@@ -200,11 +200,11 @@ const Index = () => {
       <>
         <FixedCornerLogo>
           <Image
-            src="/pngs/coram__logo.png"
+            src="/pngs/Group 6.png"
             alt="CORAM DEO"
-            width={480}
-            height={160}
-            sizes="(max-width: 480px) 92vw, 560px"
+            width={800}
+            height={120}
+            sizes="(max-width: 800px) 92vw, 560px"
             draggable={false}
             style={{ ...homeCoramLogoStyle, pointerEvents: "none" }}
           />
@@ -233,11 +233,11 @@ const Index = () => {
     <>
       <FixedCornerLogo>
         <Image
-          src="/pngs/coram__logo.png"
+          src="/pngs/Group 6.png"
           alt="CORAM DEO"
-          width={480}
-          height={160}
-          sizes="(max-width: 480px) 92vw, 560px"
+          width={800}
+          height={120}
+          sizes="(max-width: 800px) 92vw, 560px"
           draggable={false}
           priority
           style={{ ...homeCoramLogoStyle, pointerEvents: "none" }}
@@ -245,95 +245,95 @@ const Index = () => {
       </FixedCornerLogo>
       <BackgroundWrapper>
         <HomeVerticalStack>
-        <HomeCard $isWaiting={isWaiting}>
-        {loadError ? (
-          <StateMessage title="문제가 발생했어요" description={loadError} />
-        ) : null}
-        {isWaiting ? (
-          <WaitingScene>
-            <WaitingImageCenter>
-              <Image
-                src="/pngs/kid.png"
-                alt="단짝 매칭 대기 캐릭터"
-                width={300}
-                height={300}
-                priority
-                draggable={false}
-                style={{
-                  WebkitTouchCallout: "none",
-                  WebkitUserSelect: "none",
-                  userSelect: "none",
-                }}
-                onContextMenu={blockImageSystemMenu}
-              />
-            </WaitingImageCenter>
-            <WaitingTextCard>
-              <StatusLabel>단짝 매칭중</StatusLabel>
-              <MainTitle>{`단짝 매칭중${MATCHING_STATES[matchingTextStep]}`}</MainTitle>
-              <SubText>짱친 찾아 삼만리~</SubText>
-            </WaitingTextCard>
-          </WaitingScene>
-        ) : (
-          <MatchedScene>
-            <MatchedSceneTopBar>
-              <StatusLabel $shrinkTitle>단짝 매칭 완료</StatusLabel>
-              {me.partner ? (
-                <TmiToggleButton
-                  type="button"
-                  aria-expanded={partnerTmiOpen}
-                  aria-controls="partner-tmi-panel"
-                  onClick={() => setPartnerTmiOpen((previous) => !previous)}
-                >
-                  TMI
-                </TmiToggleButton>
-              ) : null}
-            </MatchedSceneTopBar>
-            <MatchedImageRow>
-              <MatchedImageFrame role="presentation">
-                {me.image ? (
+          <HomeCard $isWaiting={isWaiting}>
+            {loadError ? (
+              <StateMessage title="문제가 발생했어요" description={loadError} />
+            ) : null}
+            {isWaiting ? (
+              <WaitingScene>
+                <WaitingImageCenter>
                   <Image
-                    src={me.image}
-                    alt={`${me.name} 프로필`}
-                    width={132}
-                    height={132}
-                    style={avatarImageStyle}
+                    src="/pngs/kid.png"
+                    alt="단짝 매칭 대기 캐릭터"
+                    width={300}
+                    height={300}
+                    priority
                     draggable={false}
+                    style={{
+                      WebkitTouchCallout: "none",
+                      WebkitUserSelect: "none",
+                      userSelect: "none",
+                    }}
                     onContextMenu={blockImageSystemMenu}
                   />
-                ) : (
-                  <FallbackBox>NO IMAGE</FallbackBox>
-                )}
-              </MatchedImageFrame>
-              <MatchedImageFrame
-                role="presentation"
-                onClick={bumpPartnerProfileTap}
-              >
-                {me.partner?.image ? (
-                  <Image
-                    src={me.partner.image}
-                    alt={`${me.partner?.name ?? "단짝"} 프로필`}
-                    width={132}
-                    height={132}
-                    style={avatarImageStyle}
-                    draggable={false}
-                    onContextMenu={blockImageSystemMenu}
-                  />
-                ) : (
-                  <FallbackBox>NO IMAGE</FallbackBox>
-                )}
-              </MatchedImageFrame>
-            </MatchedImageRow>
-            <MatchedNames>{`${me.name} ---- ❤️ ---- ${
-              me.partner?.name ?? "단짝"
-            }`}</MatchedNames>
-            <ScoreInline>
-              <ScoreInlineLabel>짱친 점수</ScoreInlineLabel>
-              <ScoreInlineValue>{me.friend!.totalScore}</ScoreInlineValue>
-            </ScoreInline>
-          </MatchedScene>
-        )}
-      </HomeCard>
-      </HomeVerticalStack>
+                </WaitingImageCenter>
+                <WaitingTextCard>
+                  <StatusLabel>단짝 매칭중</StatusLabel>
+                  <MainTitle>{`단짝 매칭중${MATCHING_STATES[matchingTextStep]}`}</MainTitle>
+                  <SubText>짱친 찾아 삼만리~</SubText>
+                </WaitingTextCard>
+              </WaitingScene>
+            ) : (
+              <MatchedScene>
+                <MatchedSceneTopBar>
+                  <StatusLabel $shrinkTitle>단짝 매칭 완료</StatusLabel>
+                  {me.partner ? (
+                    <TmiToggleButton
+                      type="button"
+                      aria-expanded={partnerTmiOpen}
+                      aria-controls="partner-tmi-panel"
+                      onClick={() => setPartnerTmiOpen((previous) => !previous)}
+                    >
+                      TMI
+                    </TmiToggleButton>
+                  ) : null}
+                </MatchedSceneTopBar>
+                <MatchedImageRow>
+                  <MatchedImageFrame role="presentation">
+                    {me.image ? (
+                      <Image
+                        src={me.image}
+                        alt={`${me.name} 프로필`}
+                        width={132}
+                        height={132}
+                        style={avatarImageStyle}
+                        draggable={false}
+                        onContextMenu={blockImageSystemMenu}
+                      />
+                    ) : (
+                      <FallbackBox>NO IMAGE</FallbackBox>
+                    )}
+                  </MatchedImageFrame>
+                  <MatchedImageFrame
+                    role="presentation"
+                    onClick={bumpPartnerProfileTap}
+                  >
+                    {me.partner?.image ? (
+                      <Image
+                        src={me.partner.image}
+                        alt={`${me.partner?.name ?? "단짝"} 프로필`}
+                        width={132}
+                        height={132}
+                        style={avatarImageStyle}
+                        draggable={false}
+                        onContextMenu={blockImageSystemMenu}
+                      />
+                    ) : (
+                      <FallbackBox>NO IMAGE</FallbackBox>
+                    )}
+                  </MatchedImageFrame>
+                </MatchedImageRow>
+                <MatchedNames>{`${me.name} ---- ❤️ ---- ${
+                  me.partner?.name ?? "단짝"
+                }`}</MatchedNames>
+                <ScoreInline>
+                  <ScoreInlineLabel>짱친 점수</ScoreInlineLabel>
+                  <ScoreInlineValue>{me.friend!.totalScore}</ScoreInlineValue>
+                </ScoreInline>
+              </MatchedScene>
+            )}
+          </HomeCard>
+        </HomeVerticalStack>
       </BackgroundWrapper>
 
       {partnerTmiOpen && me?.partner ? (
@@ -534,7 +534,13 @@ const PartnerTmiFloatShell = styled.div`
   flex-direction: column;
   gap: 10px;
   padding: 18px 20px 20px;
-  width: min(300px, calc(100vw - 28px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)));
+  width: min(
+    300px,
+    calc(
+      100vw - 28px - env(safe-area-inset-left, 0px) -
+        env(safe-area-inset-right, 0px)
+    )
+  );
   border-radius: 20px;
   background: linear-gradient(
     165deg,

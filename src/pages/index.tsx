@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import styled from "styled-components";
 import Layout from "../components/layout/layout";
 import { ReactElement } from "react";
@@ -10,7 +10,25 @@ import { colors, fonts } from "@/constants";
 import StateMessage from "@/components/common/StateMessage";
 import { signInKakaoAppFirst } from "@/lib/kakaoAuth";
 import { RiKakaoTalkFill } from "react-icons/ri";
+import { IoClose } from "react-icons/io5";
+import type { MouseEvent } from "react";
+
 let socket: Socket;
+
+const blockImageSystemMenu = (event: MouseEvent<HTMLImageElement>): void => {
+  event.preventDefault();
+};
+
+const avatarImageStyle = {
+  borderRadius: "20px",
+  objectFit: "cover" as const,
+  WebkitTouchCallout: "none" as const,
+  WebkitUserSelect: "none" as const,
+  userSelect: "none" as const,
+};
+
+const SECRET_PROFILE_TAP_GOAL = 20;
+const SECRET_TAP_RESET_MS = 2800;
 
 interface MeResponse {
   id: string;
@@ -27,6 +45,7 @@ interface MeResponse {
     id: string;
     name: string;
     image?: string;
+    prayerTopic?: string;
   } | null;
 }
 
@@ -37,7 +56,46 @@ const Index = () => {
   const [isChecking, setIsChecking] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [matchingTextStep, setMatchingTextStep] = useState(0);
+  const [secretModalOpen, setSecretModalOpen] = useState(false);
   const isWaiting = !me?.friendId || !me.friend;
+
+  const secretTapCountRef = useRef(0);
+  const secretTapResetTimerRef = useRef<number | null>(null);
+
+  const bumpPartnerProfileTap = () => {
+    if (!me?.partner) return;
+    if (secretTapResetTimerRef.current) {
+      window.clearTimeout(secretTapResetTimerRef.current);
+      secretTapResetTimerRef.current = null;
+    }
+    secretTapCountRef.current += 1;
+    if (secretTapCountRef.current >= SECRET_PROFILE_TAP_GOAL) {
+      secretTapCountRef.current = 0;
+      setSecretModalOpen(true);
+      return;
+    }
+    secretTapResetTimerRef.current = window.setTimeout(() => {
+      secretTapCountRef.current = 0;
+      secretTapResetTimerRef.current = null;
+    }, SECRET_TAP_RESET_MS);
+  };
+
+  useEffect(
+    () => () => {
+      if (secretTapResetTimerRef.current) {
+        window.clearTimeout(secretTapResetTimerRef.current);
+      }
+    },
+    []
+  );
+
+  useEffect(() => {
+    secretTapCountRef.current = 0;
+    if (secretTapResetTimerRef.current) {
+      window.clearTimeout(secretTapResetTimerRef.current);
+      secretTapResetTimerRef.current = null;
+    }
+  }, [isWaiting]);
 
   useEffect(() => {
     const interval = window.setInterval(() => {
@@ -141,6 +199,13 @@ const Index = () => {
                 width={300}
                 height={300}
                 priority
+                draggable={false}
+                style={{
+                  WebkitTouchCallout: "none",
+                  WebkitUserSelect: "none",
+                  userSelect: "none",
+                }}
+                onContextMenu={blockImageSystemMenu}
               />
             </WaitingImageCenter>
             <WaitingTextCard>
@@ -153,27 +218,34 @@ const Index = () => {
           <MatchedScene>
             <StatusLabel>단짝 매칭 완료</StatusLabel>
             <MatchedImageRow>
-              <MatchedImageFrame>
+              <MatchedImageFrame role="presentation">
                 {me.image ? (
                   <Image
                     src={me.image}
                     alt={`${me.name} 프로필`}
                     width={132}
                     height={132}
-                    style={{ borderRadius: "20px", objectFit: "cover" }}
+                    style={avatarImageStyle}
+                    draggable={false}
+                    onContextMenu={blockImageSystemMenu}
                   />
                 ) : (
                   <FallbackBox>NO IMAGE</FallbackBox>
                 )}
               </MatchedImageFrame>
-              <MatchedImageFrame>
+              <MatchedImageFrame
+                role="presentation"
+                onClick={bumpPartnerProfileTap}
+              >
                 {me.partner?.image ? (
                   <Image
                     src={me.partner.image}
                     alt={`${me.partner?.name ?? "단짝"} 프로필`}
                     width={132}
                     height={132}
-                    style={{ borderRadius: "20px", objectFit: "cover" }}
+                    style={avatarImageStyle}
+                    draggable={false}
+                    onContextMenu={blockImageSystemMenu}
                   />
                 ) : (
                   <FallbackBox>NO IMAGE</FallbackBox>
@@ -190,6 +262,38 @@ const Index = () => {
           </MatchedScene>
         )}
       </HomeCard>
+
+      {secretModalOpen && me?.partner ? (
+        <SecretModalBackdrop role="presentation">
+          <SecretModalCard
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="partner-prayer-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <SecretModalX
+              type="button"
+              aria-label="닫기"
+              onClick={() => setSecretModalOpen(false)}
+            >
+              <IoClose size={22} aria-hidden />
+            </SecretModalX>
+            <SecretModalHeader>
+              <SecretModalKicker>기도제목</SecretModalKicker>
+              <SecretModalTitle id="partner-prayer-title">
+                {me.partner.name}.
+              </SecretModalTitle>
+            </SecretModalHeader>
+            <SecretModalBodyShell>
+              <SecretModalBody $empty={!me.partner.prayerTopic?.trim()}>
+                {me.partner.prayerTopic?.trim()
+                  ? me.partner.prayerTopic.trim()
+                  : "등록된 기도제목이 없어요."}
+              </SecretModalBody>
+            </SecretModalBodyShell>
+          </SecretModalCard>
+        </SecretModalBackdrop>
+      ) : null}
     </BackgroundWrapper>
   );
 };
@@ -233,6 +337,8 @@ const WaitingImageCenter = styled.div`
   display: flex;
   justify-content: center;
   align-items: center;
+  -webkit-touch-callout: none;
+  -webkit-user-drag: none;
 `;
 
 const WaitingTextCard = styled.div`
@@ -283,6 +389,9 @@ const MatchedImageFrame = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
+  -webkit-touch-callout: none;
+  -webkit-user-drag: none;
+  touch-action: manipulation;
 `;
 
 const FallbackBox = styled.div`
@@ -347,6 +456,120 @@ const KakaoButton = styled.button`
   font-family: ${fonts.pretendard.$700};
   font-size: 16px;
   cursor: pointer;
+`;
+
+const SecretModalBackdrop = styled.div`
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(25, 25, 25, 0.48);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+`;
+
+const SecretModalCard = styled.div`
+  position: relative;
+  width: 100%;
+  max-width: 392px;
+  border-radius: 24px;
+  padding: 28px 22px 24px;
+  background: ${colors.secondary.white};
+  box-shadow: 0 28px 72px rgba(25, 25, 25, 0.22),
+    0 0 0 1px rgba(104, 80, 251, 0.06);
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    border: 1px solid rgba(222, 223, 225, 0.9);
+  }
+`;
+
+const SecretModalHeader = styled.div`
+  padding-right: 48px;
+  margin-bottom: 18px;
+`;
+
+const SecretModalKicker = styled.p`
+  margin: 0 0 10px;
+  font-family: ${fonts.pretendard.$600};
+  font-size: 13px;
+  letter-spacing: -0.01em;
+  color: ${colors.primary.$01};
+`;
+
+const SecretModalTitle = styled.h2`
+  margin: 0;
+  font-family: ${fonts.pretendard.$700};
+  font-size: 22px;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+  color: ${colors.secondary.black};
+`;
+
+const SecretModalX = styled.button`
+  position: absolute;
+  top: 18px;
+  right: 16px;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: none;
+  border-radius: 14px;
+  background: ${colors.grayscale.$11};
+  color: ${colors.grayscale.$03};
+  cursor: pointer;
+
+  &:hover {
+    background: ${colors.grayscale.$10};
+    color: ${colors.secondary.black};
+  }
+
+  &:active {
+    background: ${colors.grayscale.$09};
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${colors.primary.$02};
+    outline-offset: 2px;
+  }
+`;
+
+const SecretModalBodyShell = styled.div`
+  padding: 20px 18px;
+  border-radius: 18px;
+  border: 1px solid ${colors.grayscale.$09};
+  border-left: 4px solid ${colors.primary.$01};
+  background: linear-gradient(
+    160deg,
+    ${colors.secondary.$01} 0%,
+    ${colors.secondary.white} 48%,
+    ${colors.grayscale.$11} 100%
+  );
+  max-height: min(52vh, 288px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+`;
+
+const SecretModalBody = styled.p<{ $empty?: boolean }>`
+  margin: 0;
+  font-family: ${fonts.pretendard.$500};
+  font-size: 16px;
+  line-height: 1.7;
+  color: ${(p) => (p.$empty ? colors.grayscale.$06 : colors.grayscale.$02)};
+  font-style: ${(p) => (p.$empty ? "italic" : "normal")};
+  white-space: pre-wrap;
+  word-break: break-word;
 `;
 
 const MATCHING_STATES = ["..", "...", "....", "....❤️"];

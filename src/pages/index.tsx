@@ -138,8 +138,8 @@ const Index = () => {
               <Image
                 src="/pngs/kid.png"
                 alt="단짝 매칭 대기 캐릭터"
-                width={280}
-                height={160}
+                width={300}
+                height={300}
                 priority
               />
             </WaitingImageCenter>
@@ -180,7 +180,9 @@ const Index = () => {
                 )}
               </MatchedImageFrame>
             </MatchedImageRow>
-            <MatchedNames>{`${me.name} ---- ❤️ ---- ${me.partner?.name ?? "단짝"}`}</MatchedNames>
+            <MatchedNames>{`${me.name} ---- ❤️ ---- ${
+              me.partner?.name ?? "단짝"
+            }`}</MatchedNames>
             <ScoreInline>
               <ScoreInlineLabel>짱친 점수</ScoreInlineLabel>
               <ScoreInlineValue>{me.friend!.totalScore}</ScoreInlineValue>
@@ -236,7 +238,6 @@ const WaitingImageCenter = styled.div`
 const WaitingTextCard = styled.div`
   margin-top: 12px;
   border-radius: 16px;
-  background: ${colors.grayscale.$10};
   padding: 16px;
   display: flex;
   flex-direction: column;

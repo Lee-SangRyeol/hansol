@@ -3,11 +3,25 @@ import { connectDB } from "@/lib/mongodb";
 import User from "@/models/User";
 import Friend from "@/models/Friend";
 import { isValidAdminPin } from "@/lib/admin";
+import type { MatchingUserLite, ProposedPair } from "@/lib/partnerMatching";
+import { proposePartnerMatching } from "@/lib/partnerMatching";
 
 interface AdminLeanUser {
   _id: string;
   name: string;
   friendId?: string | null;
+  partnerUserId?: string | null;
+  closeFriends?: string[];
+  onboardingCompleted?: boolean;
+}
+
+function normalizeFriendName(names: string): string {
+  return names.trim();
+}
+
+function friendDisplayName(personAName: string, personBName: string): string {
+  const sorted = [personAName, personBName].sort((a, b) => a.localeCompare(b));
+  return `${sorted[0]}-${sorted[1]}`;
 }
 
 function validatePin(req: NextApiRequest, res: NextApiResponse) {
@@ -17,6 +31,22 @@ function validatePin(req: NextApiRequest, res: NextApiResponse) {
     return false;
   }
   return true;
+}
+
+function enrichPreview(
+  proposals: ProposedPair[],
+  byId: Map<string, AdminLeanUser>
+) {
+  return proposals.map((pair) => {
+    const name1 = byId.get(pair.userId1)?.name ?? "";
+    const name2 = byId.get(pair.userId2)?.name ?? "";
+    return {
+      ...pair,
+      displayName: friendDisplayName(name1, name2),
+      userName1: name1,
+      userName2: name2,
+    };
+  });
 }
 
 export default async function handler(
@@ -29,7 +59,9 @@ export default async function handler(
     try {
       await connectDB();
       const users = (await User.find({})
-        .select("_id name friendId")
+        .select(
+          "_id name friendId partnerUserId closeFriends onboardingCompleted createdAt"
+        )
         .sort({ createdAt: 1 })
         .lean()) as unknown as AdminLeanUser[];
       const friends = await Friend.find({})
@@ -46,25 +78,195 @@ export default async function handler(
   if (req.method === "POST") {
     try {
       await connectDB();
-      const { mode, userId1, userId2 } = req.body as {
-        mode?: "manual" | "auto";
+      const body = req.body as {
+        mode?: "manual" | "auto" | "preview" | "apply";
         userId1?: string;
         userId2?: string;
+        pairs?: { userId1?: string; userId2?: string }[];
       };
+      const { mode, userId1, userId2, pairs: applyPairsRaw } = body;
+
+      if (mode === "preview") {
+        const unmatched = (await User.find({
+          $or: [{ friendId: { $exists: false } }, { friendId: null }],
+        })
+          .select("_id name closeFriends onboardingCompleted")
+          .sort({ createdAt: 1 })
+          .lean()) as unknown as AdminLeanUser[];
+
+        const forAlgo: MatchingUserLite[] = unmatched.map((u) => ({
+          _id: String(u._id),
+          name: u.name,
+          closeFriends: Array.isArray(u.closeFriends) ? [...u.closeFriends] : [],
+        }));
+
+        const { pairs, unmatchedIds } = proposePartnerMatching(forAlgo);
+        const byId = new Map(
+          unmatched.map((u) => [String(u._id), u])
+        );
+        const previewRows = enrichPreview(pairs, byId);
+        const unmatchedUsers = unmatched
+          .filter((u) => unmatchedIds.includes(String(u._id)))
+          .map((u) => ({
+            _id: String(u._id),
+            name: u.name,
+            closeFriends: u.closeFriends ?? [],
+            onboardingCompleted: Boolean(u.onboardingCompleted),
+          }));
+
+        const notes = [
+          "상호 선택: 서로의 이름이 각자 짱칭(선호) 목록 안에 있는 경우만 짝 후보입니다.",
+          "먼저 서로에게 1순위인 쌍을 모두 매칭한 뒤, 남은 인원은 선호 순위 합이 작을수록 우선 매칭합니다.",
+        ];
+
+        return res.status(200).json({
+          preview: previewRows,
+          unmatchedUsers,
+          unmatchedUserIds: unmatchedIds,
+          notes,
+          algorithmSummary: {
+            candidateCount: forAlgo.length,
+            proposedPairCount: pairs.length,
+            remainingUnmatched: unmatchedIds.length,
+          },
+        });
+      }
+
+      if (mode === "apply") {
+        const pairsPayload = Array.isArray(applyPairsRaw) ? applyPairsRaw : [];
+        const sanitized = pairsPayload
+          .map((row) => ({
+            userId1: String(row.userId1 ?? "").trim(),
+            userId2: String(row.userId2 ?? "").trim(),
+          }))
+          .filter((row) => row.userId1 && row.userId2 && row.userId1 !== row.userId2);
+
+        if (!sanitized.length) {
+          return res.status(400).json({ error: "적용할 짝이 없습니다." });
+        }
+
+        const seen = new Set<string>();
+        for (const row of sanitized) {
+          if (seen.has(row.userId1) || seen.has(row.userId2)) {
+            return res
+              .status(400)
+              .json({ error: "동일한 유저가 여러 짝에 포함되어 있습니다." });
+          }
+          seen.add(row.userId1);
+          seen.add(row.userId2);
+        }
+
+        for (const row of sanitized) {
+          const first = (await User.findById(row.userId1)
+            .select("_id name friendId")
+            .lean()) as unknown as Pick<AdminLeanUser, "_id" | "name" | "friendId"> | null;
+          const second = (await User.findById(row.userId2)
+            .select("_id name friendId")
+            .lean()) as unknown as Pick<AdminLeanUser, "_id" | "name" | "friendId"> | null;
+
+          if (!first || !second) {
+            return res.status(404).json({ error: "존재하지 않는 유저가 포함되어 있습니다." });
+          }
+          if (first.friendId || second.friendId) {
+            return res
+              .status(409)
+              .json({ error: "이미 단짝이 배정된 유저가 포함되어 있습니다. 새로고침 후 다시 시도하세요." });
+          }
+        }
+
+        const createdFriendIds: string[] = [];
+        for (const row of sanitized) {
+          const first = (await User.findById(row.userId1)
+            .select("_id name")
+            .lean()) as unknown as { _id: string; name: string } | null;
+          const second = (await User.findById(row.userId2)
+            .select("_id name")
+            .lean()) as unknown as { _id: string; name: string } | null;
+          if (!first || !second) continue;
+
+          const friendName = normalizeFriendName(
+            friendDisplayName(first.name, second.name)
+          );
+          let friendDoc;
+          try {
+            friendDoc = await Friend.create({
+              name: friendName,
+              leader: first.name,
+              members: [first.name, second.name],
+              memberUserIds: [first._id, second._id],
+              totalScore: 0,
+              roulette: true,
+              matchedAt: new Date(),
+            });
+          } catch (creationError: unknown) {
+            const code =
+              typeof creationError === "object" &&
+              creationError &&
+              "code" in creationError
+                ? Number((creationError as { code?: number }).code)
+                : 0;
+            if (code === 11000) {
+              return res.status(409).json({
+                error: `단짝 이름 '${friendName}' 이(가) 이미 존재합니다.`,
+              });
+            }
+            throw creationError;
+          }
+
+          await User.updateOne(
+            { _id: first._id },
+            {
+              $set: {
+                friendId: friendDoc._id,
+                partnerUserId: second._id,
+                team: friendName,
+              },
+            }
+          );
+          await User.updateOne(
+            { _id: second._id },
+            {
+              $set: {
+                friendId: friendDoc._id,
+                partnerUserId: first._id,
+                team: friendName,
+              },
+            }
+          );
+          createdFriendIds.push(String(friendDoc._id));
+        }
+
+        return res.status(200).json({ success: true, createdFriendIds });
+      }
 
       if (mode === "auto") {
         const unmatched = (await User.find({
           $or: [{ friendId: { $exists: false } }, { friendId: null }],
         })
-          .select("_id name")
+          .select("_id name closeFriends onboardingCompleted")
           .sort({ createdAt: 1 })
           .lean()) as unknown as AdminLeanUser[];
 
+        const forAlgo: MatchingUserLite[] = unmatched.map((u) => ({
+          _id: String(u._id),
+          name: u.name,
+          closeFriends: Array.isArray(u.closeFriends) ? [...u.closeFriends] : [],
+        }));
+        const { pairs } = proposePartnerMatching(forAlgo);
+
         const createdFriendIds: string[] = [];
-        for (let index = 0; index + 1 < unmatched.length; index += 2) {
-          const first = unmatched[index];
-          const second = unmatched[index + 1];
-          const friendName = `${first.name}-${second.name}`;
+        for (const row of pairs) {
+          const first = (await User.findById(row.userId1)
+            .select("_id name friendId")
+            .lean()) as unknown as { _id: string; name: string; friendId?: unknown } | null;
+          const second = (await User.findById(row.userId2)
+            .select("_id name friendId")
+            .lean()) as unknown as { _id: string; name: string; friendId?: unknown } | null;
+          if (!first || !second || first.friendId || second.friendId) continue;
+
+          const friendName = normalizeFriendName(
+            friendDisplayName(first.name, second.name)
+          );
           const friend = await Friend.create({
             name: friendName,
             leader: first.name,
@@ -74,7 +276,6 @@ export default async function handler(
             roulette: true,
             matchedAt: new Date(),
           });
-
           await User.updateOne(
             { _id: first._id },
             { $set: { friendId: friend._id, partnerUserId: second._id, team: friendName } }
@@ -94,17 +295,24 @@ export default async function handler(
       }
 
       const first = (await User.findById(userId1)
-        .select("_id name")
-        .lean()) as unknown as AdminLeanUser | null;
+        .select("_id name friendId")
+        .lean()) as unknown as (Pick<AdminLeanUser, "_id" | "name"> & {
+        friendId?: unknown;
+      }) | null;
       const second = (await User.findById(userId2)
-        .select("_id name")
-        .lean()) as unknown as AdminLeanUser | null;
+        .select("_id name friendId")
+        .lean()) as unknown as (Pick<AdminLeanUser, "_id" | "name"> & {
+        friendId?: unknown;
+      }) | null;
 
       if (!first || !second) {
         return res.status(404).json({ error: "유저를 찾을 수 없습니다." });
       }
+      if (first.friendId || second.friendId) {
+        return res.status(409).json({ error: "이미 단짝이 배정된 유저입니다." });
+      }
 
-      const friendName = `${first.name}-${second.name}`;
+      const friendName = normalizeFriendName(friendDisplayName(first.name, second.name));
       const friend = await Friend.create({
         name: friendName,
         leader: first.name,

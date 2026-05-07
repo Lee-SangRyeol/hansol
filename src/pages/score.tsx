@@ -91,8 +91,7 @@ const ScorePage = () => {
     <AllContainer>
       <Container>
         <TitleRow>
-          <Title>단짝 스코어</Title>
-          <SubTitle>TOP 10</SubTitle>
+          <Title>짱친 점수</Title>
         </TitleRow>
 
         <ListContainer>
@@ -100,7 +99,10 @@ const ScorePage = () => {
             <StateMessage title="문제가 발생했어요" description={loadError} />
           ) : null}
           {!friends.length && !loadError ? (
-            <StateMessage title="아직 점수 데이터가 없어요" description="단짝 점수가 생성되면 여기에 표시됩니다." />
+            <StateMessage
+              title="아직 점수 데이터가 없어요"
+              description="단짝 점수가 생성되면 여기에 표시됩니다."
+            />
           ) : null}
           {friends.map((friend, index) => (
             <FriendRow key={friend._id} onClick={() => openHistory(friend)}>
@@ -108,7 +110,13 @@ const ScorePage = () => {
                 {index < 3 ? (
                   <GiTrophyCup
                     size={24}
-                    color={index === 0 ? "#FFD700" : index === 1 ? "#C0C0C0" : "#CD7F32"}
+                    color={
+                      index === 0
+                        ? "#FFD700"
+                        : index === 1
+                        ? "#C0C0C0"
+                        : "#CD7F32"
+                    }
                   />
                 ) : (
                   <RankText>{index + 1}</RankText>
@@ -312,7 +320,8 @@ const AddButton = styled.button<{ $isActive: boolean }>`
   border-radius: 10px;
   padding: 0 14px;
   font-family: ${fonts.pretendard.$600};
-  background: ${(props) => (props.$isActive ? colors.primary.$01 : colors.grayscale.$08)};
+  background: ${(props) =>
+    props.$isActive ? colors.primary.$01 : colors.grayscale.$08};
   color: ${colors.secondary.white};
   cursor: ${(props) => (props.$isActive ? "pointer" : "not-allowed")};
 `;

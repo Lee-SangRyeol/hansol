@@ -291,7 +291,7 @@ export default function AdminPage() {
   const emitRoulette = () => socket?.emit("roulette_spin_request");
   const emitRouletteReset = () => {
     const ok = confirm(
-      "모든 단짝을 룰렛 후보로 다시 넣습니다(roulette 보장). 진행중인 은 중단됩니다. 계속할까요?"
+      "모든 단짝을 룰렛 후보로 다시 넣습니다. 진행 중인 룰렛은 중단됩니다. 계속할까요?"
     );
     if (!ok) return;
     socket?.emit("roulette_reset_request");
@@ -352,29 +352,66 @@ export default function AdminPage() {
 
       {tab === "game" && (
         <Section>
-          <Title>게임 진행</Title>
-          <Row>
-            <Button onClick={emitStart}>버저 시작</Button>
-            <Button onClick={emitReset}>버저 리셋</Button>
-            <Button onClick={emitRoulette}>룰렛 실행</Button>
-            <Button type="button" onClick={emitRouletteReset}>
-              룰렛 초기화
-            </Button>
-          </Row>
-          <Row>
-            {questionCategories.map((category) => (
-              <Button
-                key={category}
-                onClick={() => emitQuestionCategory(category)}
-              >
-                {category}
-              </Button>
-            ))}
-          </Row>
-          <Row>
-            <Button onClick={emitPrev}>문제 이전</Button>
-            <Button onClick={emitNext}>문제 다음</Button>
-          </Row>
+          <SectionHead>
+            <Title>게임 진행</Title>
+            <SubLabel>
+              주제 선택 후 참가 화면에는 큰 글자로 주제만 보입니다. 문제는
+              「문제 다음」으로 넘길 때 표시됩니다.
+            </SubLabel>
+          </SectionHead>
+
+          <GameSubgroup>
+            <SubgroupTitle>버저</SubgroupTitle>
+            <GameTwoCol>
+              <WideGameButton type="button" onClick={emitStart}>
+                버저 시작
+              </WideGameButton>
+              <ToneGameButton type="button" onClick={emitReset}>
+                버저 리셋
+              </ToneGameButton>
+            </GameTwoCol>
+          </GameSubgroup>
+
+          <GameSubgroup>
+            <SubgroupTitle>룰렛</SubgroupTitle>
+            <GameTwoCol>
+              <WideGameButton type="button" onClick={emitRoulette}>
+                룰렛 실행
+              </WideGameButton>
+              <DangerOutlineButton type="button" onClick={emitRouletteReset}>
+                룰렛 초기화
+              </DangerOutlineButton>
+            </GameTwoCol>
+          </GameSubgroup>
+
+          <GameSubgroup>
+            <SubgroupTitle>몸으로 말해요</SubgroupTitle>
+            <SubgroupHint>
+              주제 선택 → 참가 화면에 주제만 표시 → 다음 버튼으로 1번 문항부터.
+            </SubgroupHint>
+            <TopicChipGrid>
+              {questionCategories.map((category) => (
+                <TopicChip
+                  key={category}
+                  type="button"
+                  onClick={() => emitQuestionCategory(category)}
+                >
+                  {category}
+                </TopicChip>
+              ))}
+              {!questionCategories.length ? (
+                <TopicEmptyHint>등록된 주제 없음(API·시드 확인)</TopicEmptyHint>
+              ) : null}
+            </TopicChipGrid>
+            <GameTwoCol>
+              <WideGameButton type="button" onClick={emitPrev}>
+                ◀ 문제 이전
+              </WideGameButton>
+              <WideGameButton type="button" onClick={emitNext}>
+                문제 다음 ▶
+              </WideGameButton>
+            </GameTwoCol>
+          </GameSubgroup>
         </Section>
       )}
 
@@ -716,7 +753,131 @@ const Section = styled.div`
   padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
+`;
+
+const SectionHead = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  h1 {
+    margin-bottom: 0;
+  }
+`;
+
+const GameSubgroup = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 14px;
+  background: ${colors.grayscale.$11};
+  border: 1px solid ${colors.grayscale.$09};
+`;
+
+const SubgroupTitle = styled.h3`
+  margin: 0;
+  font-family: ${fonts.pretendard.$700};
+  font-size: 15px;
+  color: ${colors.secondary.black};
+`;
+
+const SubgroupHint = styled.p`
+  margin: -4px 0 2px;
+  font-family: ${fonts.pretendard.$400};
+  font-size: 12px;
+  line-height: 1.45;
+  color: ${colors.grayscale.$06};
+`;
+
+const GameTwoCol = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+`;
+
+const WideGameButton = styled.button`
+  min-height: 52px;
+  border: none;
+  border-radius: 12px;
+  padding: 0 12px;
+  font-family: ${fonts.pretendard.$600};
+  font-size: 15px;
+  background: ${colors.primary.$01};
+  color: ${colors.secondary.white};
+  cursor: pointer;
+
+  &:active {
+    opacity: 0.92;
+  }
+`;
+
+const ToneGameButton = styled.button`
+  min-height: 52px;
+  border: none;
+  border-radius: 12px;
+  padding: 0 12px;
+  font-family: ${fonts.pretendard.$600};
+  font-size: 15px;
+  background: ${colors.grayscale.$10};
+  color: ${colors.secondary.black};
+  cursor: pointer;
+  border: 1px solid ${colors.grayscale.$09};
+
+  &:active {
+    background: ${colors.grayscale.$09};
+  }
+`;
+
+const DangerOutlineButton = styled.button`
+  min-height: 52px;
+  border-radius: 12px;
+  padding: 0 12px;
+  font-family: ${fonts.pretendard.$600};
+  font-size: 15px;
+  background: ${colors.secondary.white};
+  color: ${colors.point.red};
+  border: 2px solid ${colors.point.red};
+  cursor: pointer;
+
+  &:active {
+    background: rgba(244, 84, 84, 0.08);
+  }
+`;
+
+const TopicChipGrid = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 2px;
+  -webkit-overflow-scrolling: touch;
+`;
+
+const TopicChip = styled.button`
+  border-radius: 999px;
+  padding: 10px 14px;
+  min-height: 44px;
+  font-family: ${fonts.pretendard.$600};
+  font-size: 13px;
+  background: ${colors.secondary.white};
+  color: ${colors.secondary.black};
+  border: 1px solid ${colors.grayscale.$09};
+  cursor: pointer;
+  text-align: center;
+
+  &:active {
+    background: ${colors.grayscale.$10};
+  }
+`;
+
+const TopicEmptyHint = styled.span`
+  font-family: ${fonts.pretendard.$500};
+  font-size: 13px;
+  color: ${colors.grayscale.$06};
+  padding: 8px 4px;
 `;
 
 const Card = styled(Section)`

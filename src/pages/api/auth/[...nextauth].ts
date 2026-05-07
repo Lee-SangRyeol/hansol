@@ -36,11 +36,21 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async session({ session, token }) {
-      if (session.user) {
+      if (session.user && token.sub) {
         session.user.id = token.sub;
         session.user.image = token.picture;
-        const dbUser = await User.findOne({ snsId: token.sub });
+
+        await connectDB();
+        const dbUser = (await User.findOne({ snsId: token.sub })
+          .select("name role")
+          .lean()) as { name?: string; role?: string } | null;
+
         session.user.role = dbUser?.role || "user";
+
+        const dbName = dbUser?.name?.trim();
+        if (dbName) {
+          session.user.name = dbName;
+        }
       }
       return session;
     },

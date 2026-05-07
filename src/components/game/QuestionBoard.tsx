@@ -67,33 +67,35 @@ const QuestionBoard = () => {
   }, []);
 
   const categories = useMemo(
-    () => Array.from(new Set(questions.map((question) => question.category))).filter(Boolean),
+    () =>
+      Array.from(
+        new Set(questions.map((question) => question.category))
+      ).filter(Boolean),
     [questions]
   );
 
   const isAdmin = session?.user?.role === "admin";
+
+  const questionLabel = (() => {
+    if (!state.category) return "주제를 선택해 주세요";
+    if (state.index < 0) return `${state.category} · 문제 대기`;
+    return `${state.category} / ${state.index + 1}번`;
+  })();
+
+  const showTopicOnly =
+    Boolean(state.category) && state.index < 0 && !state.text.trim();
+  const showNoCategory = !state.category;
 
   const selectCategory = (category: string) => {
     if (!isAdmin || !socket) return;
     socket.emit("question_select_category", category);
   };
 
-  const goPrev = () => {
-    if (!isAdmin || !socket) return;
-    socket.emit("question_prev");
-  };
-
-  const goNext = () => {
-    if (!isAdmin || !socket) return;
-    socket.emit("question_next");
-  };
-
   return (
     <Container>
       <Card>
         <HeaderRow>
-          <Title>문제 탭</Title>
-          <RoleText>{isAdmin ? "관리자 조작 가능" : "읽기 전용"}</RoleText>
+          <Title>몸으로 말해요</Title>
         </HeaderRow>
 
         <CategoryWrap>
@@ -101,7 +103,10 @@ const QuestionBoard = () => {
             <StateMessage title="문제가 발생했어요" description={loadError} />
           ) : null}
           {!loadError && !categories.length ? (
-            <StateMessage title="등록된 주제가 없어요" description="관리자가 문제를 먼저 등록해 주세요." />
+            <StateMessage
+              title="등록된 주제가 없어요"
+              description="관리자가 문제를 먼저 등록해 주세요."
+            />
           ) : null}
           {categories.map((category) => (
             <CategoryButton
@@ -116,20 +121,21 @@ const QuestionBoard = () => {
         </CategoryWrap>
 
         <QuestionBox>
-          <QuestionLabel>
-            {state.category ? `${state.category} / ${state.index + 1}번` : "주제를 선택해 주세요"}
-          </QuestionLabel>
-          <QuestionText>{state.text || "문제가 아직 선택되지 않았습니다."}</QuestionText>
+          <QuestionLabel>{questionLabel}</QuestionLabel>
+          <QuestionBody>
+            {showNoCategory ? (
+              <QuestionBodyCenter $muted>
+                문제가 아직 선택되지 않았습니다.
+              </QuestionBodyCenter>
+            ) : null}
+            {showTopicOnly ? (
+              <QuestionBodyCenter $topic>{state.category}</QuestionBodyCenter>
+            ) : null}
+            {!showNoCategory && !showTopicOnly ? (
+              <QuestionBodyCenter>{state.text}</QuestionBodyCenter>
+            ) : null}
+          </QuestionBody>
         </QuestionBox>
-
-        <ControlRow>
-          <ControlButton onClick={goPrev} disabled={!isAdmin}>
-            이전 문제
-          </ControlButton>
-          <ControlButton onClick={goNext} disabled={!isAdmin}>
-            다음 문제
-          </ControlButton>
-        </ControlRow>
       </Card>
     </Container>
   );
@@ -157,11 +163,6 @@ const Title = styled.h2`
   color: ${colors.secondary.black};
 `;
 
-const RoleText = styled.div`
-  font-family: ${fonts.pretendard.$500};
-  color: ${colors.grayscale.$06};
-`;
-
 const CategoryWrap = styled.div`
   display: flex;
   flex-wrap: wrap;
@@ -174,8 +175,10 @@ const CategoryButton = styled.button<{ $active: boolean }>`
   border-radius: 999px;
   padding: 8px 12px;
   font-family: ${fonts.pretendard.$600};
-  background: ${(props) => (props.$active ? colors.primary.$01 : colors.grayscale.$10)};
-  color: ${(props) => (props.$active ? colors.secondary.white : colors.secondary.black)};
+  background: ${(props) =>
+    props.$active ? colors.primary.$01 : colors.grayscale.$10};
+  color: ${(props) =>
+    props.$active ? colors.secondary.white : colors.secondary.black};
   cursor: pointer;
 
   &:disabled {
@@ -189,42 +192,36 @@ const QuestionBox = styled.div`
   border-radius: 12px;
   background: ${colors.grayscale.$10};
   padding: 14px;
-  min-height: 160px;
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
 `;
 
 const QuestionLabel = styled.div`
+  flex-shrink: 0;
   font-family: ${fonts.pretendard.$500};
   color: ${colors.grayscale.$06};
+  font-size: 14px;
 `;
 
-const QuestionText = styled.div`
-  margin-top: 8px;
-  font-family: ${fonts.pretendard.$700};
-  color: ${colors.secondary.black};
-  font-size: 24px;
-  line-height: 1.35;
-`;
-
-const ControlRow = styled.div`
-  display: flex;
-  gap: 8px;
-  margin-top: 14px;
-`;
-
-const ControlButton = styled.button`
+const QuestionBody = styled.div`
   flex: 1;
-  border: none;
-  border-radius: 12px;
-  height: 44px;
-  font-family: ${fonts.pretendard.$600};
-  background: ${colors.secondary.black};
-  color: ${colors.secondary.white};
-  cursor: pointer;
+  min-height: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 10px;
+`;
 
-  &:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
-  }
+const QuestionBodyCenter = styled.div<{ $muted?: boolean; $topic?: boolean }>`
+  width: 100%;
+  text-align: center;
+  font-family: ${fonts.pretendard.$700};
+  font-size: ${(p) => (p.$topic ? "32px" : "24px")};
+  line-height: 1.4;
+  color: ${(p) =>
+    p.$muted ? colors.grayscale.$06 : colors.secondary.black};
+  word-break: keep-all;
 `;
 
 export default QuestionBoard;

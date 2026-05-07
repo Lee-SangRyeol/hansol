@@ -392,7 +392,7 @@ export default async function handler(
         socket.on("question_select_category", async (category: string) => {
           try {
             if (!(await isAdminSocket())) return;
-            const questions = await GameQuestion.find({
+            await GameQuestion.find({
               category,
               isActive: true,
             })
@@ -400,8 +400,9 @@ export default async function handler(
               .lean();
 
             currentQuestionCategory = category;
-            currentQuestionIndex = 0;
-            currentQuestionText = questions[0]?.text ?? "";
+            // 주제만 고른 직후: 1번 문제 텍스트는 보이지 않음(다음 버튼으로 진입).
+            currentQuestionIndex = -1;
+            currentQuestionText = "";
             emitQuestionState();
           } catch (error) {
             console.error("Question category select error:", error);
@@ -419,6 +420,14 @@ export default async function handler(
               .sort({ number: 1, createdAt: 1 })
               .lean();
             if (!questions.length) return;
+
+            if (currentQuestionIndex < 0) {
+              currentQuestionIndex = 0;
+              currentQuestionText = questions[0]?.text ?? "";
+              emitQuestionState();
+              return;
+            }
+
             currentQuestionIndex = Math.min(
               currentQuestionIndex + 1,
               questions.length - 1
@@ -441,7 +450,18 @@ export default async function handler(
               .sort({ number: 1, createdAt: 1 })
               .lean();
             if (!questions.length) return;
-            currentQuestionIndex = Math.max(currentQuestionIndex - 1, 0);
+
+            if (currentQuestionIndex <= -1) {
+              return;
+            }
+            if (currentQuestionIndex === 0) {
+              currentQuestionIndex = -1;
+              currentQuestionText = "";
+              emitQuestionState();
+              return;
+            }
+
+            currentQuestionIndex -= 1;
             currentQuestionText = questions[currentQuestionIndex]?.text ?? "";
             emitQuestionState();
           } catch (error) {

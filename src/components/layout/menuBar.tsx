@@ -103,7 +103,7 @@ const HeaderLayout = styled.div`
 const MenuContainer = styled.div`
   display: flex;
   width: min(560px, 100%);
-  height: 64px;
+  height: 77px;
   border-radius: 22px;
   background: ${colors.secondary.white};
   justify-content: space-between;
@@ -124,7 +124,9 @@ const MenuItem = styled.div`
   font-size: 12px;
   text-transform: uppercase;
   color: ${(props) =>
-    props.className === "active" ? colors.secondary.black : colors.grayscale.$06};
+    props.className === "active"
+      ? colors.secondary.black
+      : colors.grayscale.$06};
   background: ${(props) =>
     props.className === "active" ? colors.grayscale.$10 : "transparent"};
   cursor: pointer;

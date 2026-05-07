@@ -12,7 +12,7 @@ import QuestionBoard from "../components/game/QuestionBoard";
 type TabType = "roulette" | "buzzer" | "question";
 
 const Game = () => {
-  const { data: session } = useSession();
+  const { data: session, update } = useSession();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabType>("roulette");
 
@@ -33,6 +33,17 @@ const Game = () => {
     { id: "buzzer" as TabType, label: "버저", icon: "🔔" },
     { id: "question" as TabType, label: "문제", icon: "📝" },
   ];
+
+  const handleSelectTab = async (tabId: TabType) => {
+    if (tabId === "buzzer") {
+      try {
+        await update();
+      } catch (error) {
+        console.error("세션 이름 동기화 실패:", error);
+      }
+    }
+    setActiveTab(tabId);
+  };
 
   const renderActiveTab = () => {
     switch (activeTab) {
@@ -55,7 +66,7 @@ const Game = () => {
             <TabButton
               key={tab.id}
               $isActive={activeTab === tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => handleSelectTab(tab.id)}
             >
               <TabIcon>{tab.icon}</TabIcon>
               <TabLabel>{tab.label}</TabLabel>

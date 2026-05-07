@@ -4,6 +4,12 @@ import User from "@/models/User";
 import Friend from "@/models/Friend";
 import { isValidAdminPin } from "@/lib/admin";
 
+interface AdminLeanUser {
+  _id: string;
+  name: string;
+  friendId?: string | null;
+}
+
 function validatePin(req: NextApiRequest, res: NextApiResponse) {
   const pin = (req.headers["x-admin-pin"] as string | undefined) || "";
   if (!isValidAdminPin(pin)) {
@@ -22,10 +28,10 @@ export default async function handler(
   if (req.method === "GET") {
     try {
       await connectDB();
-      const users = await User.find({})
+      const users = (await User.find({})
         .select("_id name friendId")
         .sort({ createdAt: 1 })
-        .lean();
+        .lean()) as unknown as AdminLeanUser[];
       const friends = await Friend.find({})
         .select("_id name members totalScore roulette")
         .sort({ createdAt: 1 })
@@ -47,12 +53,12 @@ export default async function handler(
       };
 
       if (mode === "auto") {
-        const unmatched = await User.find({
+        const unmatched = (await User.find({
           $or: [{ friendId: { $exists: false } }, { friendId: null }],
         })
           .select("_id name")
           .sort({ createdAt: 1 })
-          .lean();
+          .lean()) as unknown as AdminLeanUser[];
 
         const createdFriendIds: string[] = [];
         for (let index = 0; index + 1 < unmatched.length; index += 2) {
@@ -87,8 +93,12 @@ export default async function handler(
         return res.status(400).json({ error: "유효한 두 명의 유저가 필요합니다." });
       }
 
-      const first = await User.findById(userId1).select("_id name").lean();
-      const second = await User.findById(userId2).select("_id name").lean();
+      const first = (await User.findById(userId1)
+        .select("_id name")
+        .lean()) as unknown as AdminLeanUser | null;
+      const second = (await User.findById(userId2)
+        .select("_id name")
+        .lean()) as unknown as AdminLeanUser | null;
 
       if (!first || !second) {
         return res.status(404).json({ error: "유저를 찾을 수 없습니다." });

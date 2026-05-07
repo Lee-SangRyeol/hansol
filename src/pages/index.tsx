@@ -3,6 +3,7 @@ import styled from "styled-components";
 import Layout from "../components/layout/layout";
 import { ReactElement } from "react";
 import { io, Socket } from "socket.io-client";
+import Image from "next/image";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/router";
 import { colors, fonts } from "@/constants";
@@ -35,6 +36,14 @@ const Index = () => {
   const [me, setMe] = useState<MeResponse | null>(null);
   const [isChecking, setIsChecking] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [matchingTextStep, setMatchingTextStep] = useState(0);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      setMatchingTextStep((prev) => (prev + 1) % 4);
+    }, 800);
+    return () => window.clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     if (status !== "authenticated") return;
@@ -90,7 +99,10 @@ const Index = () => {
     return (
       <BackgroundWrapper>
         <HomeCard>
-          <StateMessage title="불러오는 중..." description="홈 상태를 확인하고 있어요." />
+          <StateMessage
+            title="불러오는 중..."
+            description="홈 상태를 확인하고 있어요."
+          />
         </HomeCard>
       </BackgroundWrapper>
     );
@@ -120,11 +132,22 @@ const Index = () => {
           <StateMessage title="문제가 발생했어요" description={loadError} />
         ) : null}
         {!me?.friendId || !me.friend ? (
-          <>
-            <StatusLabel>단짝 매칭중</StatusLabel>
-            <MainTitle>단짝 매칭중...</MainTitle>
-            <SubText>관리자가 단짝을 지정하면 홈 화면에 바로 표시됩니다.</SubText>
-          </>
+          <WaitingScene>
+            <WaitingImageCenter>
+              <Image
+                src="/pngs/kid.png"
+                alt="단짝 매칭 대기 캐릭터"
+                width={280}
+                height={160}
+                priority
+              />
+            </WaitingImageCenter>
+            <WaitingTextCard>
+              <StatusLabel>단짝 매칭중</StatusLabel>
+              <MainTitle>{`단짝 매칭중${MATCHING_STATES[matchingTextStep]}`}</MainTitle>
+              <SubText>짱친 찾아 삼만리~</SubText>
+            </WaitingTextCard>
+          </WaitingScene>
         ) : (
           <>
             <StatusLabel>단짝 매칭 완료</StatusLabel>
@@ -166,6 +189,8 @@ const HomeCard = styled.div`
   padding: 28px;
   background: ${colors.secondary.white};
   box-shadow: 0 16px 40px rgba(25, 25, 25, 0.12);
+  display: flex;
+  flex-direction: column;
 `;
 
 const StatusLabel = styled.div`
@@ -179,6 +204,30 @@ const MainTitle = styled.h1`
   font-family: ${fonts.pretendard.$700};
   font-size: 30px;
   color: ${colors.secondary.black};
+`;
+
+const WaitingImageCenter = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+`;
+
+const WaitingTextCard = styled.div`
+  margin-top: 12px;
+  border-radius: 16px;
+  background: ${colors.grayscale.$10};
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+`;
+
+const WaitingScene = styled.div`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 `;
 
 const SubText = styled.p`
@@ -263,6 +312,8 @@ const KakaoButton = styled.button`
   font-size: 16px;
   cursor: pointer;
 `;
+
+const MATCHING_STATES = ["..", "...", "....", "....❤️"];
 
 Index.getLayout = function getLayout(page: ReactElement) {
   return <Layout>{page}</Layout>;

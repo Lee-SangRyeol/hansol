@@ -218,21 +218,24 @@ const Index = () => {
         ) : (
           <MatchedScene>
             <StatusLabel>단짝 매칭 완료</StatusLabel>
-            {me.partner ? (
-              <PartnerTmiSpeechSection
-                aria-label={`${me.partner.name} 님의 최근 TMI`}
-              >
-                <PartnerTmiKicker>{me.partner.name} 님의 TMI</PartnerTmiKicker>
-                <PartnerTmiSpeechBubble>
-                  <PartnerTmiText>
-                    {me.partner.tmi?.trim()
-                      ? me.partner.tmi.trim()
-                      : "아직 TMI를 남기지 않았어요."}
-                  </PartnerTmiText>
-                </PartnerTmiSpeechBubble>
-              </PartnerTmiSpeechSection>
-            ) : null}
-            <MatchedImageRow>
+            <MatchedProfileCluster>
+              {me.partner ? (
+                <PartnerTmiFloatShell
+                  aria-label={`${me.partner.name} 님의 최근 TMI`}
+                >
+                  <PartnerTmiKicker>
+                    {me.partner.name} 님의 TMI
+                  </PartnerTmiKicker>
+                  <PartnerTmiFloatScroll>
+                    <PartnerTmiText>
+                      {me.partner.tmi?.trim()
+                        ? me.partner.tmi.trim()
+                        : "아직 TMI를 남기지 않았어요."}
+                    </PartnerTmiText>
+                  </PartnerTmiFloatScroll>
+                </PartnerTmiFloatShell>
+              ) : null}
+              <MatchedImageRow>
               <MatchedImageFrame role="presentation">
                 {me.image ? (
                   <Image
@@ -267,6 +270,7 @@ const Index = () => {
                 )}
               </MatchedImageFrame>
             </MatchedImageRow>
+            </MatchedProfileCluster>
             <MatchedNames>{`${me.name} ---- ❤️ ---- ${
               me.partner?.name ?? "단짝"
             }`}</MatchedNames>
@@ -333,6 +337,7 @@ const HomeCard = styled.div<{ $isWaiting: boolean }>`
     props.$isWaiting ? "none" : "0 16px 40px rgba(25, 25, 25, 0.12)"};
   display: flex;
   flex-direction: column;
+  overflow: visible;
 `;
 
 const StatusLabel = styled.div`
@@ -386,30 +391,31 @@ const MatchedScene = styled.div`
   min-height: 0;
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
-  gap: 10px;
+  justify-content: center;
+  gap: 0;
 `;
 
-const PartnerTmiSpeechSection = styled.section`
+/* 프로필 행 높이만 레이아웃에 포함, 말풍선은 absolute로 위에 얹음 */
+const MatchedProfileCluster = styled.div`
+  position: relative;
   width: 100%;
-  margin-top: 8px;
+  display: flex;
+  justify-content: center;
+  margin-top: 12px;
+  z-index: 0;
+`;
+
+const PartnerTmiFloatShell = styled.div`
+  position: absolute;
+  left: 0;
+  right: 0;
+  /* 프로필 사진 상단과 꼬리 끝이 겹치지 않도록 여유 */
+  bottom: calc(100% + 42px);
+  z-index: 4;
   display: flex;
   flex-direction: column;
   gap: 10px;
-`;
-
-const PartnerTmiKicker = styled.p`
-  margin: 0;
-  font-family: ${fonts.pretendard.$600};
-  font-size: 13px;
-  letter-spacing: -0.01em;
-  color: ${colors.primary.$01};
-`;
-
-const PartnerTmiSpeechBubble = styled.div`
-  position: relative;
-  width: 100%;
-  padding: 22px 22px 26px;
+  padding: 18px 20px 20px;
   border-radius: 20px;
   background: linear-gradient(
     165deg,
@@ -418,21 +424,20 @@ const PartnerTmiSpeechBubble = styled.div`
     ${colors.grayscale.$11} 100%
   );
   border: 1px solid ${colors.grayscale.$09};
-  box-shadow: 0 10px 28px rgba(25, 25, 25, 0.1);
+  box-shadow: 0 12px 32px rgba(25, 25, 25, 0.14);
   box-sizing: border-box;
-  max-height: min(42vh, 320px);
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
+  max-height: min(40vh, 300px);
+  pointer-events: auto;
 
-  /* 꼬리: 단짝(오른쪽) 프로필 쪽을 가리킴 */
+  /* 말풍선 본체 하단 근처에만 꼬리 (아래로 길게 늘어나지 않음) */
   &::after {
     content: "";
     position: absolute;
-    left: calc(50% + 68px);
-    bottom: -9px;
+    left: calc(50% + 71px);
+    bottom: -5px;
     transform: translateX(-50%) rotate(45deg);
-    width: 18px;
-    height: 18px;
+    width: 14px;
+    height: 14px;
     background: linear-gradient(
       135deg,
       ${colors.secondary.$01} 45%,
@@ -440,15 +445,32 @@ const PartnerTmiSpeechBubble = styled.div`
     );
     border-right: 1px solid ${colors.grayscale.$09};
     border-bottom: 1px solid ${colors.grayscale.$09};
-    border-radius: 0 0 4px 0;
+    border-radius: 0 0 3px 0;
     box-sizing: border-box;
   }
 
   @media (max-width: 380px) {
     &::after {
-      left: 72%;
+      left: 71%;
+      transform: translateX(-50%) rotate(45deg);
     }
   }
+`;
+
+const PartnerTmiFloatScroll = styled.div`
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+`;
+
+const PartnerTmiKicker = styled.p`
+  margin: 0;
+  flex-shrink: 0;
+  font-family: ${fonts.pretendard.$600};
+  font-size: 13px;
+  letter-spacing: -0.01em;
+  color: ${colors.primary.$01};
 `;
 
 const PartnerTmiText = styled.p`
@@ -462,11 +484,12 @@ const PartnerTmiText = styled.p`
 `;
 
 const MatchedImageRow = styled.div`
+  position: relative;
+  z-index: 2;
   display: flex;
   justify-content: center;
   align-items: flex-end;
   gap: 14px;
-  margin-top: 8px;
 `;
 
 const MatchedImageFrame = styled.div`

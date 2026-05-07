@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import styled from "styled-components";
 import Layout from "../components/layout/layout";
-import { ReactElement } from "react";
 import { io, Socket } from "socket.io-client";
 import Image from "next/image";
 import { useSession } from "next-auth/react";
@@ -11,7 +10,7 @@ import StateMessage from "@/components/common/StateMessage";
 import { signInKakaoAppFirst } from "@/lib/kakaoAuth";
 import { RiKakaoTalkFill } from "react-icons/ri";
 import { IoClose } from "react-icons/io5";
-import type { MouseEvent } from "react";
+import type { CSSProperties, MouseEvent, ReactElement } from "react";
 
 let socket: Socket;
 
@@ -25,6 +24,14 @@ const avatarImageStyle = {
   WebkitTouchCallout: "none" as const,
   WebkitUserSelect: "none" as const,
   userSelect: "none" as const,
+};
+
+/** 홈 상단 CORAM DEO 로고 — 말풍선·카드와 겹치지 않게 작게 */
+const homeCoramLogoStyle: CSSProperties = {
+  width: "auto",
+  height: "clamp(32px, 8.5vw, 40px)",
+  maxWidth: "min(200px, 55vw)",
+  objectFit: "contain",
 };
 
 const SECRET_PROFILE_TAP_GOAL = 20;
@@ -158,12 +165,25 @@ const Index = () => {
   if (status === "loading" || (status === "authenticated" && isChecking)) {
     return (
       <BackgroundWrapper>
-        <HomeCard $isWaiting={false}>
-          <StateMessage
-            title="불러오는 중..."
-            description="홈 상태를 확인하고 있어요."
-          />
-        </HomeCard>
+        <HomeVerticalStack>
+          <HomeLogoBar>
+            <Image
+              src="/pngs/coram__logo.png"
+              alt="CORAM DEO"
+              width={480}
+              height={160}
+              sizes="200px"
+              draggable={false}
+              style={homeCoramLogoStyle}
+            />
+          </HomeLogoBar>
+          <HomeCard $isWaiting={false}>
+            <StateMessage
+              title="불러오는 중..."
+              description="홈 상태를 확인하고 있어요."
+            />
+          </HomeCard>
+        </HomeVerticalStack>
       </BackgroundWrapper>
     );
   }
@@ -171,23 +191,51 @@ const Index = () => {
   if (status === "unauthenticated") {
     return (
       <BackgroundWrapper>
-        <HomeCard $isWaiting={false}>
-          <CenterBox>
-            <MainTitle>코람엠티</MainTitle>
-            <SubText>카카오 로그인 후 단짝 상태를 확인할 수 있어요.</SubText>
-            <KakaoButton onClick={() => signInKakaoAppFirst("/")}>
-              <RiKakaoTalkFill size={20} />
-              카카오 로그인
-            </KakaoButton>
-          </CenterBox>
-        </HomeCard>
+        <HomeVerticalStack>
+          <HomeLogoBar>
+            <Image
+              src="/pngs/coram__logo.png"
+              alt="CORAM DEO"
+              width={480}
+              height={160}
+              sizes="200px"
+              draggable={false}
+              style={homeCoramLogoStyle}
+            />
+          </HomeLogoBar>
+          <HomeCard $isWaiting={false}>
+            <CenterBox>
+              <MainTitle>코람엠티</MainTitle>
+              <SubText>
+                카카오 로그인 후 단짝 상태를 확인할 수 있어요.
+              </SubText>
+              <KakaoButton onClick={() => signInKakaoAppFirst("/")}>
+                <RiKakaoTalkFill size={20} />
+                카카오 로그인
+              </KakaoButton>
+            </CenterBox>
+          </HomeCard>
+        </HomeVerticalStack>
       </BackgroundWrapper>
     );
   }
 
   return (
     <BackgroundWrapper>
-      <HomeCard $isWaiting={isWaiting}>
+      <HomeVerticalStack>
+        <HomeLogoBar>
+          <Image
+            src="/pngs/coram__logo.png"
+            alt="CORAM DEO"
+            width={480}
+            height={160}
+            sizes="200px"
+            draggable={false}
+            style={homeCoramLogoStyle}
+            priority
+          />
+        </HomeLogoBar>
+        <HomeCard $isWaiting={isWaiting}>
         {loadError ? (
           <StateMessage title="문제가 발생했어요" description={loadError} />
         ) : null}
@@ -281,6 +329,7 @@ const Index = () => {
           </MatchedScene>
         )}
       </HomeCard>
+      </HomeVerticalStack>
 
       {secretModalOpen && me?.partner ? (
         <SecretModalBackdrop role="presentation">
@@ -319,11 +368,31 @@ const Index = () => {
 
 const BackgroundWrapper = styled.div`
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
-  height: calc(100vh - 50px);
+  min-height: calc(100vh - 50px);
+  padding: 12px 24px 24px;
+  box-sizing: border-box;
   background: ${colors.secondary.$01};
-  padding: 24px;
+`;
+
+const HomeVerticalStack = styled.div`
+  width: 100%;
+  max-width: 560px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: clamp(14px, 3.5vw, 20px);
+`;
+
+const HomeLogoBar = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
+  user-select: none;
+  -webkit-user-select: none;
 `;
 
 const HomeCard = styled.div<{ $isWaiting: boolean }>`

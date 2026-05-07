@@ -274,6 +274,13 @@ export default function AdminPage() {
   const emitStart = () => socket?.emit("start_game");
   const emitReset = () => socket?.emit("reset_buzzer");
   const emitRoulette = () => socket?.emit("roulette_spin_request");
+  const emitRouletteReset = () => {
+    const ok = confirm(
+      "모든 단짝을 룰렛 후보로 다시 넣습니다(roulette 보장). 진행중인 스핀은 중단됩니다. 계속할까요?"
+    );
+    if (!ok) return;
+    socket?.emit("roulette_reset_request");
+  };
   const emitQuestionCategory = (category: string) =>
     socket?.emit("question_select_category", category);
   const emitPrev = () => socket?.emit("question_prev");
@@ -335,6 +342,9 @@ export default function AdminPage() {
             <Button onClick={emitStart}>버저 시작</Button>
             <Button onClick={emitReset}>버저 리셋</Button>
             <Button onClick={emitRoulette}>룰렛 실행</Button>
+            <Button type="button" onClick={emitRouletteReset}>
+              룰렛 초기화
+            </Button>
           </Row>
           <Row>
             {questionCategories.map((category) => (

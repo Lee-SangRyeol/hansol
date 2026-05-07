@@ -62,6 +62,8 @@ export default async function handler(
     let currentQuestionCategory = "";
     let currentQuestionIndex = 0;
     let currentQuestionText = "";
+    let rouletteSpinTimeout: ReturnType<typeof setTimeout> | null = null;
+    const ROULETTE_SPIN_DURATION_MS = 5600;
 
     io.on("connection", async (socket) => {
       console.log("A user connected:", socket.id);
@@ -279,7 +281,13 @@ export default async function handler(
           const candidates = await Friend.find({ roulette: true })
             .select("_id name")
             .lean();
-          io.emit("roulette_candidates", candidates);
+          io.emit(
+            "roulette_candidates",
+            candidates.map((candidate) => ({
+              _id: String(candidate._id),
+              name: String(candidate.name),
+            }))
+          );
         };
 
         await emitRouletteCandidates();
@@ -295,27 +303,81 @@ export default async function handler(
         socket.on("roulette_spin_request", async () => {
           try {
             if (!(await isAdminSocket())) return;
+            if (rouletteSpinTimeout) return;
+
             const candidates = await Friend.find({ roulette: true })
               .select("_id name")
               .lean();
-            if (!candidates.length) {
+            const serial = candidates.map((entry) => ({
+              _id: String(entry._id),
+              name: String(entry.name),
+            }));
+
+            if (!serial.length) {
               io.emit("roulette_result", { winner: null });
               return;
             }
 
-            const randomIndex = Math.floor(Math.random() * candidates.length);
-            const winner = candidates[randomIndex];
+            const winnerIndex = Math.floor(Math.random() * serial.length);
+            const winner = serial[winnerIndex];
+            const winnerDoc = candidates[winnerIndex];
 
-            await Friend.updateOne({ _id: winner._id }, { $set: { roulette: false } });
+            io.emit("roulette_spin_animation", {
+              candidates: serial,
+              winnerId: winner._id,
+              spinDurationMs: ROULETTE_SPIN_DURATION_MS,
+            });
 
-            const updatedCandidates = await Friend.find({ roulette: true })
-              .select("_id name")
-              .lean();
-
-            io.emit("roulette_result", { winner });
-            io.emit("roulette_candidates", updatedCandidates);
+            rouletteSpinTimeout = setTimeout(async () => {
+              rouletteSpinTimeout = null;
+              try {
+                await Friend.updateOne(
+                  { _id: winnerDoc._id },
+                  { $set: { roulette: false } }
+                );
+                const updatedCandidates = await Friend.find({ roulette: true })
+                  .select("_id name")
+                  .lean();
+                io.emit("roulette_result", { winner });
+                io.emit(
+                  "roulette_candidates",
+                  updatedCandidates.map((candidate) => ({
+                    _id: String(candidate._id),
+                    name: String(candidate.name),
+                  }))
+                );
+              } catch (commitError) {
+                console.error("Roulette commit error:", commitError);
+              }
+            }, ROULETTE_SPIN_DURATION_MS);
           } catch (error) {
             console.error("Roulette spin error:", error);
+          }
+        });
+
+        socket.on("roulette_reset_request", async () => {
+          try {
+            if (!(await isAdminSocket())) return;
+            if (rouletteSpinTimeout) {
+              clearTimeout(rouletteSpinTimeout);
+              rouletteSpinTimeout = null;
+            }
+            await Friend.updateMany({}, { $set: { roulette: true } });
+            io.emit("roulette_reset");
+
+            const resetCandidates = await Friend.find({ roulette: true })
+              .select("_id name")
+              .lean();
+            io.emit(
+              "roulette_candidates",
+              resetCandidates.map((candidate) => ({
+                _id: String(candidate._id),
+                name: String(candidate.name),
+              }))
+            );
+            io.emit("roulette_result", { winner: null });
+          } catch (error) {
+            console.error("Roulette reset error:", error);
           }
         });
 

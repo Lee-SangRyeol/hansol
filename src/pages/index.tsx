@@ -3,10 +3,11 @@ import styled from "styled-components";
 import Layout from "../components/layout/layout";
 import { ReactElement } from "react";
 import { io, Socket } from "socket.io-client";
-import { signIn, useSession } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { useRouter } from "next/router";
 import { colors, fonts } from "@/constants";
 import StateMessage from "@/components/common/StateMessage";
+import { signInKakaoAppFirst } from "@/lib/kakaoAuth";
 let socket: Socket;
 
 interface MeResponse {
@@ -36,7 +37,7 @@ const Index = () => {
 
   useEffect(() => {
     if (status === "unauthenticated") {
-      signIn("kakao", { callbackUrl: "/" });
+      signInKakaoAppFirst("/");
     }
   }, [status]);
 

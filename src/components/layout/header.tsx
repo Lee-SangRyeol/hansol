@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useSession, signIn } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import styled from "styled-components";
 import { RiKakaoTalkFill } from "react-icons/ri";
 import { FaUser } from "react-icons/fa";
@@ -7,6 +7,7 @@ import { fonts } from "@/constants";
 import Image from "next/image";
 import UserModal from "../modal/UserModal";
 import { AnimatePresence } from "framer-motion";
+import { signInKakaoAppFirst } from "@/lib/kakaoAuth";
 
 const Header = () => {
   const { data: session } = useSession();
@@ -34,7 +35,7 @@ const Header = () => {
             <ProfileName>{session.user?.name || "프로필"}</ProfileName>
           </ProfileWrapper>
         ) : (
-          <LoginButton onClick={() => signIn("kakao")}>
+          <LoginButton onClick={() => signInKakaoAppFirst("/")}>
             <RiKakaoTalkFill size={20} />
             <LoginText>LogIn</LoginText>
           </LoginButton>

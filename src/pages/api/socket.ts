@@ -9,6 +9,7 @@ import User from "@/models/User";
 import FriendScoreLog from "@/models/FriendScoreLog";
 import Score from "@/models/Score";
 import GameQuestion from "@/models/GameQuestion";
+import { isValidAdminPin } from "@/lib/admin";
 
 export const config = {
   api: {
@@ -67,6 +68,13 @@ export default async function handler(
 
       const isAdminSocket = async () => {
         try {
+          const pinFromHandshake = socket.handshake?.auth?.adminPin as
+            | string
+            | undefined;
+          if (isValidAdminPin(pinFromHandshake)) {
+            return true;
+          }
+
           const token = await getToken({
             req: socket.request as any,
             secret: process.env.NEXTAUTH_SECRET,
@@ -106,18 +114,24 @@ export default async function handler(
 
       // 게임 시작
       socket.on("start_game", () => {
-        console.log("Game started");
-        gameStarted = true;
-        io.emit("game_state", gameStarted);
+          (async () => {
+            if (!(await isAdminSocket())) return;
+            console.log("Game started");
+            gameStarted = true;
+            io.emit("game_state", gameStarted);
+          })();
       });
 
       // 리셋(버저/게임상태)
       socket.on("reset_buzzer", () => {
-        console.log("Buzzer reset");
-        buzzerOrder = [];
-        gameStarted = false;
-        io.emit("buzzer_order", buzzerOrder);
-        io.emit("game_state", gameStarted);
+          (async () => {
+            if (!(await isAdminSocket())) return;
+            console.log("Buzzer reset");
+            buzzerOrder = [];
+            gameStarted = false;
+            io.emit("buzzer_order", buzzerOrder);
+            io.emit("game_state", gameStarted);
+          })();
       });
 
       // 칠판 아이템 추가 (관리자만)
@@ -191,6 +205,7 @@ export default async function handler(
 
         socket.on("friend_score_update", async (friendId, name, updateLog, score) => {
           try {
+            if (!(await isAdminSocket())) return;
             let resolvedFriendId = friendId;
             if (friendId) {
               await Friend.updateOne({ _id: friendId }, { $inc: { totalScore: score } });

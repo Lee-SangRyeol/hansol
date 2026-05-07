@@ -8,6 +8,7 @@ import { useRouter } from "next/router";
 import { colors, fonts } from "@/constants";
 import StateMessage from "@/components/common/StateMessage";
 import { signInKakaoAppFirst } from "@/lib/kakaoAuth";
+import { RiKakaoTalkFill } from "react-icons/ri";
 let socket: Socket;
 
 interface MeResponse {
@@ -34,12 +35,6 @@ const Index = () => {
   const [me, setMe] = useState<MeResponse | null>(null);
   const [isChecking, setIsChecking] = useState(true);
   const [loadError, setLoadError] = useState("");
-
-  useEffect(() => {
-    if (status === "unauthenticated") {
-      signInKakaoAppFirst("/");
-    }
-  }, [status]);
 
   useEffect(() => {
     if (status !== "authenticated") return;
@@ -70,6 +65,14 @@ const Index = () => {
   }, [status, router]);
 
   useEffect(() => {
+    if (status === "loading") return;
+    if (status === "unauthenticated") {
+      setIsChecking(false);
+      setMe(null);
+    }
+  }, [status]);
+
+  useEffect(() => {
     if (status !== "authenticated") return;
     socket = io({
       path: "/api/socket",
@@ -83,11 +86,28 @@ const Index = () => {
     };
   }, [status]);
 
-  if (status !== "authenticated" || isChecking) {
+  if (status === "loading" || (status === "authenticated" && isChecking)) {
     return (
       <BackgroundWrapper>
         <HomeCard>
           <StateMessage title="불러오는 중..." description="홈 상태를 확인하고 있어요." />
+        </HomeCard>
+      </BackgroundWrapper>
+    );
+  }
+
+  if (status === "unauthenticated") {
+    return (
+      <BackgroundWrapper>
+        <HomeCard>
+          <CenterBox>
+            <MainTitle>코람엠티</MainTitle>
+            <SubText>카카오 로그인 후 단짝 상태를 확인할 수 있어요.</SubText>
+            <KakaoButton onClick={() => signInKakaoAppFirst("/")}>
+              <RiKakaoTalkFill size={20} />
+              카카오 로그인
+            </KakaoButton>
+          </CenterBox>
         </HomeCard>
       </BackgroundWrapper>
     );
@@ -218,6 +238,30 @@ const ScoreValue = styled.div`
   margin-top: 4px;
   font-family: ${fonts.pretendard.$700};
   font-size: 34px;
+`;
+
+const CenterBox = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 24px 0;
+`;
+
+const KakaoButton = styled.button`
+  margin-top: 10px;
+  border: none;
+  border-radius: 12px;
+  height: 48px;
+  padding: 0 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fee500;
+  color: #191919;
+  font-family: ${fonts.pretendard.$700};
+  font-size: 16px;
+  cursor: pointer;
 `;
 
 Index.getLayout = function getLayout(page: ReactElement) {

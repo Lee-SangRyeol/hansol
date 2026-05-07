@@ -1,6 +1,5 @@
 import styled from "styled-components";
 import { useRouter } from "next/router";
-import Header from "./header";
 import MenuBar from "./menuBar";
 
 interface LayoutProps {
@@ -9,15 +8,14 @@ interface LayoutProps {
 
 const Layout = ({ children }: LayoutProps) => {
   const router = useRouter();
-  const isHome = router.pathname === "/";
+  const isOnboarding = router.pathname === "/onboarding";
 
   return (
     <Container>
-      {isHome && <Header />}
       <MainWrapper>
         <MainContent>{children}</MainContent>
       </MainWrapper>
-      <MenuBar />
+      {!isOnboarding && <MenuBar />}
     </Container>
   );
 };

@@ -43,6 +43,9 @@ interface DraftPairRow {
   userId2: string;
 }
 
+const PRESET_POINTS = [20, 50, 100, 150, 200] as const;
+const SCORE_SLOTS = 10;
+
 let socket: Socket | null = null;
 
 export default function AdminPage() {
@@ -53,8 +56,7 @@ export default function AdminPage() {
   const [friends, setFriends] = useState<FriendData[]>([]);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [selectedFriendId, setSelectedFriendId] = useState("");
-  const [scoreReason, setScoreReason] = useState("");
-  const [scoreValue, setScoreValue] = useState("");
+  const [selectedPresetPoints, setSelectedPresetPoints] = useState<number | null>(null);
 
   const [draftPairs, setDraftPairs] = useState<DraftPairRow[]>([]);
   const [previewMeta, setPreviewMeta] = useState<{
@@ -78,6 +80,25 @@ export default function AdminPage() {
       Array.from(new Set(questions.map((question) => question.category))).filter(Boolean),
     [questions]
   );
+
+  /** 점수 랭킹·버튼 슬롯과 동일한 정렬 */
+  const rankedFriends = useMemo(() => {
+    return [...friends].sort((friendA, friendB) => {
+      if (friendB.totalScore !== friendA.totalScore) {
+        return friendB.totalScore - friendA.totalScore;
+      }
+      return friendA.name.localeCompare(friendB.name);
+    });
+  }, [friends]);
+
+  const friendPickerSlots = useMemo(() => {
+    const slice = rankedFriends.slice(0, SCORE_SLOTS);
+    const slots: (FriendData | null)[] = [];
+    for (let index = 0; index < SCORE_SLOTS; index += 1) {
+      slots.push(slice[index] ?? null);
+    }
+    return slots;
+  }, [rankedFriends]);
 
   const fetchAdminData = useCallback(async (targetPin: string) => {
     const headers = { "x-admin-pin": targetPin };
@@ -239,18 +260,24 @@ export default function AdminPage() {
     [draftPairs, unmatchedUsers]
   );
 
-  const emitScore = () => {
+  const handleGrantPresetScore = () => {
+    if (!selectedPresetPoints || !selectedFriendId) {
+      alert("부여 점수와 단짝을 먼저 선택해 주세요.");
+      return;
+    }
     const friend = friends.find((item) => item._id === selectedFriendId);
-    if (!socket || !friend || !scoreReason.trim() || !scoreValue) return;
+    if (!socket || !friend) {
+      alert("소켓이 연결되지 않았거나 단짝을 찾지 못했습니다.");
+      return;
+    }
+    const updateLog = `프리셋 ${selectedPresetPoints}점 부여`;
     socket.emit(
       "friend_score_update",
       friend._id,
       friend.name,
-      scoreReason.trim(),
-      Number(scoreValue)
+      updateLog,
+      selectedPresetPoints
     );
-    setScoreReason("");
-    setScoreValue("");
   };
 
   const emitStart = () => socket?.emit("start_game");
@@ -484,34 +511,109 @@ export default function AdminPage() {
       )}
 
       {tab === "score" && (
-        <Section>
-          <Title>점수 부여</Title>
-          <Select
-            value={selectedFriendId}
-            onChange={(event) => setSelectedFriendId(event.target.value)}
-          >
-            <option value="">단짝 선택</option>
-            {friends.map((friend) => (
-              <option key={friend._id} value={friend._id}>
-                {friend.name}
-              </option>
-            ))}
-          </Select>
-          <Row>
-            <Input
-              value={scoreReason}
-              onChange={(event) => setScoreReason(event.target.value)}
-              placeholder="점수 사유"
-            />
-            <Input
-              type="number"
-              value={scoreValue}
-              onChange={(event) => setScoreValue(event.target.value)}
-              placeholder="점수"
-            />
-          </Row>
-          <Button onClick={emitScore}>점수 반영</Button>
-        </Section>
+        <ScoreTabGrow>
+        <ScoreSection aria-label="점수 부여">
+          <ScoreTitleRow>
+            <Title style={{ margin: 0 }}>점수 부여</Title>
+            <ScoreHintText>
+              상위 {SCORE_SLOTS}팀 빠른 선택 · 랭킹 실시간 반영은 소켓 기준입니다
+            </ScoreHintText>
+          </ScoreTitleRow>
+
+          <ScoreWorkbench>
+            <RankColumn>
+              <RankHeading>순위</RankHeading>
+              <RankScroller>
+                {rankedFriends.length === 0 ? (
+                  <RankEmptyText>등록된 단짝이 없습니다.</RankEmptyText>
+                ) : (
+                  rankedFriends.map((friendRow, rankingIndex) => (
+                    <RankRow key={friendRow._id}>
+                      <RankBadge>{rankingIndex + 1}</RankBadge>
+                      <RankName>{friendRow.name}</RankName>
+                      <RankPoints>{friendRow.totalScore.toLocaleString("ko-KR")}점</RankPoints>
+                    </RankRow>
+                  ))
+                )}
+              </RankScroller>
+            </RankColumn>
+
+            <ControlColumn>
+              <ControlHalf>
+                <ControlLabel>부여 점수</ControlLabel>
+                <PresetGrid>
+                  {PRESET_POINTS.map((points) => (
+                    <PresetButton
+                      key={points}
+                      type="button"
+                      $active={selectedPresetPoints === points}
+                      onClick={() =>
+                        setSelectedPresetPoints((current) =>
+                          current === points ? null : points
+                        )
+                      }
+                    >
+                      {points}점
+                    </PresetButton>
+                  ))}
+                </PresetGrid>
+              </ControlHalf>
+
+              <ControlHalf>
+                <ControlLabel>단짝 선택 (랭킹 상위 {SCORE_SLOTS}팀)</ControlLabel>
+                <FriendSlotGrid>
+                  {friendPickerSlots.map((slotFriend, slotIndex) => {
+                    const isSelected =
+                      Boolean(slotFriend) && selectedFriendId === slotFriend!._id;
+                    return (
+                      <FriendSlotButton
+                        key={slotFriend?._id ?? `empty-${slotIndex}`}
+                        type="button"
+                        disabled={!slotFriend}
+                        $active={isSelected}
+                        onClick={() => {
+                          if (!slotFriend) return;
+                          setSelectedFriendId((current) =>
+                            current === slotFriend._id ? "" : slotFriend._id
+                          );
+                        }}
+                      >
+                        <SlotIndex>{slotIndex + 1}</SlotIndex>
+                        <SlotName>{slotFriend ? slotFriend.name : "—"}</SlotName>
+                        {slotFriend ? (
+                          <SlotScore>{slotFriend.totalScore.toLocaleString("ko-KR")}점</SlotScore>
+                        ) : (
+                          <SlotScore>빈 슬롯</SlotScore>
+                        )}
+                      </FriendSlotButton>
+                    );
+                  })}
+                </FriendSlotGrid>
+              </ControlHalf>
+
+              <GrantRow>
+                <GrantSummary>
+                  {selectedPresetPoints ? (
+                    <>
+                      <strong>{selectedPresetPoints}점</strong>
+                      {selectedFriendId
+                        ? ` · ${
+                            friends.find((item) => item._id === selectedFriendId)?.name ?? ""
+                          }`
+                        : " · 단짝 미선택"}
+                    </>
+                  ) : (
+                    "점수를 선택해 주세요"
+                  )}
+                </GrantSummary>
+                <GrantButton type="button" onClick={handleGrantPresetScore}>
+                  점수 부여
+                </GrantButton>
+              </GrantRow>
+            </ControlColumn>
+          </ScoreWorkbench>
+        </ScoreSection>
+        </ScoreTabGrow>
       )}
     </Page>
   );
@@ -524,6 +626,13 @@ const Page = styled.div`
   display: flex;
   flex-direction: column;
   gap: 12px;
+`;
+
+const ScoreTabGrow = styled.div`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 `;
 
 const TabBar = styled.div`
@@ -731,4 +840,266 @@ const SideStack = styled.div`
 const PreviewHint = styled.span`
   font-size: 12px;
   color: ${colors.grayscale.$06};
+`;
+
+const ScoreSection = styled.section`
+  background: ${colors.secondary.white};
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  flex: 1;
+  min-height: 0;
+`;
+
+const ScoreTitleRow = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+`;
+
+const ScoreHintText = styled.p`
+  margin: 0;
+  font-size: 12px;
+  color: ${colors.grayscale.$07};
+  font-family: ${fonts.pretendard.$400};
+`;
+
+const ScoreWorkbench = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  flex: 1;
+  min-height: 0;
+
+  @media (min-width: 768px) {
+    flex-direction: row;
+    align-items: stretch;
+    min-height: min(68vh, 720px);
+  }
+`;
+
+const RankColumn = styled.div`
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px solid ${colors.grayscale.$09};
+  border-radius: 12px;
+  padding: 12px;
+  background: rgba(246, 248, 250, 0.45);
+
+  @media (min-width: 768px) {
+    flex: 0 0 33.333%;
+    max-width: 33.333%;
+  }
+`;
+
+const RankHeading = styled.div`
+  font-family: ${fonts.pretendard.$600};
+  font-size: 14px;
+  color: ${colors.secondary.black};
+`;
+
+const RankScroller = styled.div`
+  flex: 1;
+  overflow: auto;
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+`;
+
+const RankEmptyText = styled.p`
+  margin: 0;
+  font-size: 13px;
+  color: ${colors.grayscale.$07};
+`;
+
+const RankRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: ${colors.secondary.white};
+  border: 1px solid rgba(228, 232, 235, 0.9);
+  font-size: 13px;
+  font-family: ${fonts.pretendard.$500};
+`;
+
+const RankBadge = styled.span`
+  flex: 0 0 28px;
+  text-align: center;
+  font-family: ${fonts.pretendard.$700};
+  font-size: 12px;
+  color: ${colors.primary.$01};
+`;
+
+const RankName = styled.span`
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
+
+const RankPoints = styled.span`
+  flex: 0 0 auto;
+  font-family: ${fonts.pretendard.$600};
+  color: ${colors.grayscale.$06};
+`;
+
+const ControlColumn = styled.div`
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  @media (min-width: 768px) {
+    flex: 0 0 66.666%;
+    max-width: 66.666%;
+  }
+`;
+
+const ControlHalf = styled.div`
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border: 1px solid ${colors.grayscale.$09};
+  border-radius: 12px;
+  padding: 12px;
+`;
+
+const ControlLabel = styled.div`
+  font-family: ${fonts.pretendard.$600};
+  font-size: 13px;
+  color: ${colors.secondary.black};
+`;
+
+const PresetGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 8px;
+  flex: 1;
+  align-content: start;
+`;
+
+const PresetButton = styled.button<{ $active: boolean }>`
+  border-radius: 12px;
+  border: 2px solid
+    ${(props) => (props.$active ? colors.primary.$01 : colors.grayscale.$09)};
+  background: ${(props) =>
+    props.$active ? `${colors.secondary.$01}` : colors.secondary.white};
+  color: ${colors.secondary.black};
+  font-family: ${fonts.pretendard.$700};
+  font-size: 16px;
+  padding: 14px 10px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+`;
+
+const FriendSlotGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  flex: 1;
+  align-content: start;
+
+  @media (min-width: 520px) {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+`;
+
+const FriendSlotButton = styled.button<{ $active: boolean }>`
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 10px;
+  border-radius: 12px;
+  border: 2px solid
+    ${(props) =>
+      props.$active ? colors.primary.$01 : "rgba(228, 232, 235, 0.95)"};
+  background: ${(props) =>
+    props.$active ? colors.secondary.$01 : colors.secondary.white};
+  color: ${colors.secondary.black};
+  font-family: ${fonts.pretendard.$500};
+  text-align: left;
+  cursor: pointer;
+  min-height: 76px;
+
+  &:disabled {
+    opacity: 0.42;
+    cursor: not-allowed;
+    background: rgba(246, 248, 250, 0.8);
+  }
+`;
+
+const SlotIndex = styled.span`
+  font-size: 11px;
+  font-family: ${fonts.pretendard.$700};
+  color: ${colors.grayscale.$07};
+`;
+
+const SlotName = styled.span`
+  font-size: 13px;
+  font-family: ${fonts.pretendard.$600};
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
+
+const SlotScore = styled.span`
+  font-size: 11px;
+  color: ${colors.grayscale.$07};
+`;
+
+const GrantRow = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding-top: 4px;
+`;
+
+const GrantSummary = styled.div`
+  flex: 1;
+  min-width: 160px;
+  font-size: 14px;
+  color: ${colors.grayscale.$07};
+  font-family: ${fonts.pretendard.$500};
+
+  strong {
+    font-family: ${fonts.pretendard.$700};
+    color: ${colors.secondary.black};
+  }
+`;
+
+const GrantButton = styled.button`
+  border: none;
+  border-radius: 12px;
+  min-height: 48px;
+  padding: 0 28px;
+  font-family: ${fonts.pretendard.$700};
+  font-size: 16px;
+  background: ${colors.primary.$01};
+  color: ${colors.secondary.white};
+  cursor: pointer;
+  flex: 1 1 200px;
+
+  &:active {
+    transform: translateY(1px);
+  }
 `;

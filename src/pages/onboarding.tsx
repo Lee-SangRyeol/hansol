@@ -2,25 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
 import { useSession } from "next-auth/react";
 import styled from "styled-components";
-import { colors, fonts } from "@/constants";
+import { colors, fonts, CLOSE_FRIEND_OPTIONS } from "@/constants";
 import StateMessage from "@/components/common/StateMessage";
-
-const CLOSE_FRIEND_OPTIONS = [
-  "김민수",
-  "김민진",
-  "김명현",
-  "김영민",
-  "박은빈",
-  "염진호",
-  "예진",
-  "이상렬",
-  "이수현",
-  "이재찬",
-  "이희관",
-  "정가현",
-  "홍성윤",
-  "PMH",
-];
 
 const OnboardingPage = () => {
   const router = useRouter();
@@ -77,7 +60,8 @@ const OnboardingPage = () => {
       [0, 1, 2].map((index) =>
         CLOSE_FRIEND_OPTIONS.filter(
           (name) =>
-            !form.closeFriends.includes(name) || form.closeFriends[index] === name
+            !form.closeFriends.includes(name) ||
+            form.closeFriends[index] === name
         )
       ),
     [form.closeFriends]
@@ -133,7 +117,10 @@ const OnboardingPage = () => {
     return (
       <Container>
         <Card>
-          <StateMessage title="불러오는 중..." description="온보딩 정보를 준비하고 있어요." />
+          <StateMessage
+            title="불러오는 중..."
+            description="온보딩 정보를 준비하고 있어요."
+          />
         </Card>
       </Container>
     );
@@ -158,7 +145,10 @@ const OnboardingPage = () => {
             <TextArea
               value={form.prayerTopic}
               onChange={(event) =>
-                setForm((prev) => ({ ...prev, prayerTopic: event.target.value }))
+                setForm((prev) => ({
+                  ...prev,
+                  prayerTopic: event.target.value,
+                }))
               }
               placeholder="기도제목을 입력해 주세요"
               maxLength={500}
@@ -219,7 +209,9 @@ const OnboardingPage = () => {
         {step === 3 && (
           <>
             <QuestionTitle>은혜받은 성경 구절을 적어주세요</QuestionTitle>
-            <Description>최근에 은혜받은 구절 또는 평소 좋아하는 구절을 입력해 주세요.</Description>
+            <Description>
+              최근에 은혜받은 구절 또는 평소 좋아하는 구절을 입력해 주세요.
+            </Description>
             <TextArea
               value={form.bibleVerse}
               onChange={(event) =>
@@ -247,7 +239,10 @@ const OnboardingPage = () => {
               다음
             </PrimaryButton>
           ) : (
-            <PrimaryButton onClick={handleSubmit} disabled={!canGoNext || isSaving}>
+            <PrimaryButton
+              onClick={handleSubmit}
+              disabled={!canGoNext || isSaving}
+            >
               {isSaving ? "저장 중..." : "완료"}
             </PrimaryButton>
           )}

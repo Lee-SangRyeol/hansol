@@ -46,6 +46,7 @@ interface MeResponse {
     name: string;
     image?: string;
     prayerTopic?: string;
+    tmi?: string;
   } | null;
 }
 
@@ -217,6 +218,20 @@ const Index = () => {
         ) : (
           <MatchedScene>
             <StatusLabel>단짝 매칭 완료</StatusLabel>
+            {me.partner ? (
+              <PartnerTmiSpeechSection
+                aria-label={`${me.partner.name} 님의 최근 TMI`}
+              >
+                <PartnerTmiKicker>{me.partner.name} 님의 TMI</PartnerTmiKicker>
+                <PartnerTmiSpeechBubble>
+                  <PartnerTmiText>
+                    {me.partner.tmi?.trim()
+                      ? me.partner.tmi.trim()
+                      : "아직 TMI를 남기지 않았어요."}
+                  </PartnerTmiText>
+                </PartnerTmiSpeechBubble>
+              </PartnerTmiSpeechSection>
+            ) : null}
             <MatchedImageRow>
               <MatchedImageFrame role="presentation">
                 {me.image ? (
@@ -358,13 +373,6 @@ const WaitingScene = styled.div`
   justify-content: center;
 `;
 
-const MatchedScene = styled.div`
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-`;
-
 const SubText = styled.p`
   margin: 0;
   font-family: ${fonts.pretendard.$400};
@@ -372,11 +380,93 @@ const SubText = styled.p`
   line-height: 1.5;
 `;
 
+const MatchedScene = styled.div`
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 10px;
+`;
+
+const PartnerTmiSpeechSection = styled.section`
+  width: 100%;
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+`;
+
+const PartnerTmiKicker = styled.p`
+  margin: 0;
+  font-family: ${fonts.pretendard.$600};
+  font-size: 13px;
+  letter-spacing: -0.01em;
+  color: ${colors.primary.$01};
+`;
+
+const PartnerTmiSpeechBubble = styled.div`
+  position: relative;
+  width: 100%;
+  padding: 22px 22px 26px;
+  border-radius: 20px;
+  background: linear-gradient(
+    165deg,
+    ${colors.secondary.white} 0%,
+    ${colors.secondary.$01} 52%,
+    ${colors.grayscale.$11} 100%
+  );
+  border: 1px solid ${colors.grayscale.$09};
+  box-shadow: 0 10px 28px rgba(25, 25, 25, 0.1);
+  box-sizing: border-box;
+  max-height: min(42vh, 320px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+
+  /* 꼬리: 단짝(오른쪽) 프로필 쪽을 가리킴 */
+  &::after {
+    content: "";
+    position: absolute;
+    left: calc(50% + 68px);
+    bottom: -9px;
+    transform: translateX(-50%) rotate(45deg);
+    width: 18px;
+    height: 18px;
+    background: linear-gradient(
+      135deg,
+      ${colors.secondary.$01} 45%,
+      ${colors.grayscale.$11} 100%
+    );
+    border-right: 1px solid ${colors.grayscale.$09};
+    border-bottom: 1px solid ${colors.grayscale.$09};
+    border-radius: 0 0 4px 0;
+    box-sizing: border-box;
+  }
+
+  @media (max-width: 380px) {
+    &::after {
+      left: 72%;
+    }
+  }
+`;
+
+const PartnerTmiText = styled.p`
+  margin: 0;
+  font-family: ${fonts.pretendard.$500};
+  font-size: clamp(15px, 4vw, 17px);
+  line-height: 1.65;
+  color: ${colors.grayscale.$02};
+  white-space: pre-wrap;
+  word-break: keep-all;
+`;
+
 const MatchedImageRow = styled.div`
   display: flex;
   justify-content: center;
+  align-items: flex-end;
   gap: 14px;
-  margin-top: 10px;
+  margin-top: 8px;
 `;
 
 const MatchedImageFrame = styled.div`

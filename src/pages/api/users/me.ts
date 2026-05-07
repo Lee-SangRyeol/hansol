@@ -31,6 +31,7 @@ interface MePartner {
   name: string;
   image?: string;
   prayerTopic?: string;
+  tmi?: string;
 }
 
 export default async function handler(
@@ -65,13 +66,13 @@ export default async function handler(
 
     if (user.partnerUserId) {
       partner = (await User.findById(user.partnerUserId)
-        .select("_id name image prayerTopic")
+        .select("_id name image prayerTopic tmi")
         .lean()) as MePartner | null;
     } else if (friend && Array.isArray(friend.members)) {
       const partnerName = friend.members.find((member) => member !== user.name);
       if (partnerName) {
         partner = (await User.findOne({ name: partnerName })
-          .select("_id name image prayerTopic")
+          .select("_id name image prayerTopic tmi")
           .lean()) as MePartner | null;
       }
     }
@@ -103,6 +104,7 @@ export default async function handler(
             name: partner.name,
             image: partner.image ?? "",
             prayerTopic: partner.prayerTopic ?? "",
+            tmi: partner.tmi ?? "",
           }
         : null,
     });

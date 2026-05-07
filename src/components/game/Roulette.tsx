@@ -150,6 +150,8 @@ const Roulette = () => {
     });
 
     socket.on("roulette_result", (payload: { winner: Candidate | null }) => {
+      clearSpinTimeouts();
+      setIsSpinning(false);
       setHighlightIndex(null);
       setWinner(payload.winner ?? null);
     });

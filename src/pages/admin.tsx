@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import styled from "styled-components";
 import { io, Socket } from "socket.io-client";
-import { colors, fonts } from "@/constants";
+import { colors, fonts, CLOSE_FRIEND_OPTIONS } from "@/constants";
+import {
+  buildFullAiPrompt,
+  buildParticipantRows,
+  parseAiMatchPairsJson,
+} from "@/lib/adminMatchingAi";
 
 type AdminTab = "game" | "match" | "score";
 
@@ -26,21 +31,9 @@ interface Question {
   text: string;
 }
 
-interface PreviewPairRow {
-  userId1: string;
-  userId2: string;
-  userName1: string;
-  userName2: string;
-  displayName: string;
-  rank1To2: number;
-  rank2To1: number;
-  preferenceSum: number;
-  mutualFirst: boolean;
-}
-
 interface DraftPairRow {
-  userId1: string;
-  userId2: string;
+  name1: string;
+  name2: string;
 }
 
 const PRESET_POINTS = [20, 50, 100, 150, 200] as const;
@@ -59,21 +52,15 @@ export default function AdminPage() {
   const [selectedPresetPoints, setSelectedPresetPoints] = useState<number | null>(null);
 
   const [draftPairs, setDraftPairs] = useState<DraftPairRow[]>([]);
-  const [previewMeta, setPreviewMeta] = useState<{
-    unmatchedUserIds: string[];
-    algorithmSummary?: {
-      candidateCount: number;
-      proposedPairCount: number;
-      remainingUnmatched: number;
-    };
-    notes: string[];
-  } | null>(null);
+  const [aiPasteText, setAiPasteText] = useState("");
   const [matchBusy, setMatchBusy] = useState(false);
 
   const unmatchedUsers = useMemo(
     () => users.filter((user) => !user.friendId),
     [users]
   );
+
+  const participantExportRows = useMemo(() => buildParticipantRows(users), [users]);
 
   const questionCategories = useMemo(
     () =>
@@ -156,47 +143,55 @@ export default function AdminPage() {
     }
   };
 
-  const runMatchingPreview = async () => {
-    if (!unlockedPin) return;
-    setMatchBusy(true);
-    try {
-      const response = await fetch("/api/admin/match", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-admin-pin": unlockedPin,
-        },
-        body: JSON.stringify({ mode: "preview" }),
-      });
-      if (!response.ok) {
-        alert("매칭안 생성 실패");
-        setMatchBusy(false);
-        return;
-      }
-      const data = await response.json();
-      const preview = (data.preview ?? []) as PreviewPairRow[];
-      setDraftPairs(
-        preview.map((row) => ({ userId1: row.userId1, userId2: row.userId2 }))
-      );
-      setPreviewMeta({
-        unmatchedUserIds: data.unmatchedUserIds ?? [],
-        algorithmSummary: data.algorithmSummary,
-        notes: data.notes ?? [],
-      });
-    } catch {
-      alert("네트워크 오류로 매칭안을 불러오지 못했습니다.");
+  const handleCopyAiPrompt = async () => {
+    if (!participantExportRows.length) {
+      alert("복사할 데이터가 없습니다. 짱칭 1·2·3순위가 모두 입력된 유저가 필요합니다.");
+      return;
     }
-    setMatchBusy(false);
+    const promptText = buildFullAiPrompt(participantExportRows);
+    try {
+      await navigator.clipboard.writeText(promptText);
+      alert("규칙 + 참가자 JSON 프롬프트를 클립보드에 복사했습니다.");
+    } catch {
+      alert("복사에 실패했습니다. 브라우저 권한을 확인해 주세요.");
+    }
+  };
+
+  const handleApplyAiJsonToDraft = () => {
+    try {
+      const namePairs = parseAiMatchPairsJson(aiPasteText);
+      setDraftPairs(
+        namePairs.map((pairRow) => ({
+          name1: pairRow.name1,
+          name2: pairRow.name2,
+        }))
+      );
+      alert(`프리뷰에 ${namePairs.length}개의 짝을 반영했습니다. 필요하면 수정 후 적용하세요.`);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "JSON을 해석하지 못했습니다.");
+    }
   };
 
   const applyDraftPairs = async () => {
     if (!unlockedPin) return;
-    const sanitized = draftPairs.filter(
-      (pair) =>
-        pair.userId1 !== "" &&
-        pair.userId2 !== "" &&
-        pair.userId1 !== pair.userId2
-    );
+    const idByName = new Map(unmatchedUsers.map((userRow) => [userRow.name, userRow._id]));
+
+    const sanitized: { userId1: string; userId2: string }[] = [];
+    for (const pairRow of draftPairs) {
+      const name1 = pairRow.name1.trim();
+      const name2 = pairRow.name2.trim();
+      if (!name1 || !name2 || name1 === name2) continue;
+      const userId1 = idByName.get(name1);
+      const userId2 = idByName.get(name2);
+      if (!userId1 || !userId2) {
+        alert(
+          `'${name1}' 또는 '${name2}' 은(는) 현재 단짝 미배정 상태의 DB 유저 이름과 일치하지 않습니다. 새로고침 후 확인하세요.`
+        );
+        return;
+      }
+      sanitized.push({ userId1, userId2 });
+    }
+
     if (!sanitized.length) {
       alert("적용할 유효한 짝이 없습니다.");
       return;
@@ -231,7 +226,7 @@ export default function AdminPage() {
         return;
       }
       setDraftPairs([]);
-      setPreviewMeta(null);
+      setAiPasteText("");
       await fetchAdminData(unlockedPin);
       alert("적용했습니다.");
     } catch {
@@ -240,24 +235,20 @@ export default function AdminPage() {
     setMatchBusy(false);
   };
 
-  const userMap = useMemo(() => new Map(users.map((user) => [user._id, user])), [users]);
-
-  const optionsForSelect = useCallback(
+  const optionsForNameSelect = useCallback(
     (rowIdx: number, field: keyof DraftPairRow) => {
       const usedElsewhere = new Set<string>();
       draftPairs.forEach((row, idx) => {
         if (idx === rowIdx) return;
-        if (row.userId1) usedElsewhere.add(row.userId1);
-        if (row.userId2) usedElsewhere.add(row.userId2);
+        if (row.name1) usedElsewhere.add(row.name1);
+        if (row.name2) usedElsewhere.add(row.name2);
       });
       const current = draftPairs[rowIdx]?.[field];
-      const base = unmatchedUsers.filter(
-        (user) =>
-          user._id && (!usedElsewhere.has(user._id) || user._id === current)
+      return [...CLOSE_FRIEND_OPTIONS].filter(
+        (optionName) => !usedElsewhere.has(optionName) || optionName === current
       );
-      return base.sort((first, second) => first.name.localeCompare(second.name));
     },
-    [draftPairs, unmatchedUsers]
+    [draftPairs]
   );
 
   const handleGrantPresetScore = () => {
@@ -403,105 +394,114 @@ export default function AdminPage() {
               </Table>
             </TableScroll>
 
-            {previewMeta?.notes?.length ? (
-              <Bullets>
-                {previewMeta.notes.map((note) => (
-                  <Bullet key={note}>{note}</Bullet>
-                ))}
-              </Bullets>
-            ) : null}
-
+            <Title style={{ marginTop: 14, fontSize: 18 }}>AI 매칭 (프롬프트 복사)</Title>
+            <SubLabel>
+              아래 버튼으로 규칙 + 참가자 JSON 전체를 복사한 뒤 AI에 붙여넣습니다. 응답 JSON을 하단
+              입력란에 넣고 「프리뷰에 반영」을 누르면 아래 짝 표가 채워집니다. 드롭다운 옵션은
+              온보딩과 동일한 이름 풀({CLOSE_FRIEND_OPTIONS.length}명)입니다.
+            </SubLabel>
             <Row wrap>
-              <Button onClick={runMatchingPreview} disabled={matchBusy || !unmatchedUsers.length}>
-                매칭안 만들기
+              <Button type="button" onClick={handleCopyAiPrompt}>
+                규칙 + 데이터 프롬프트 복사
               </Button>
-              <Button onClick={() => setDraftPairs((rows) => [...rows, { userId1: "", userId2: "" }])}>
-                짝 행 추가
+              <MetaLine style={{ flex: "1 1 100%" }}>
+                내보내기 가능 인원: {participantExportRows.length}명 (짱칭 3명 모두 입력된 유저)
+              </MetaLine>
+            </Row>
+
+            <JsonBlockLabel>AI 응답 JSON 붙여넣기</JsonBlockLabel>
+            <JsonPasteArea
+              rows={10}
+              spellCheck={false}
+              autoComplete="off"
+              placeholder='예: { "pairs": [ { "userName1": "원정", "userName2": "은빈" } ] }'
+              value={aiPasteText}
+              onChange={(event) => setAiPasteText(event.target.value)}
+            />
+            <Row wrap>
+              <Button type="button" onClick={handleApplyAiJsonToDraft}>
+                프리뷰에 반영
               </Button>
             </Row>
 
-            {previewMeta?.algorithmSummary ? (
-              <MetaLine>
-                후보 미배정 {previewMeta.algorithmSummary.candidateCount}명 · 제안{" "}
-                {previewMeta.algorithmSummary.proposedPairCount}개 · 매칭 제외 미배정{" "}
-                {previewMeta.algorithmSummary.remainingUnmatched}명
-              </MetaLine>
-            ) : (
-              <MetaLine>
-                미배정 유저{" "}
-                {unmatchedUsers.length}명
-              </MetaLine>
-            )}
+            <MetaLine>
+              단짝 미배정 유저 {unmatchedUsers.length}명 · 적용 시 이름이 DB display name과 정확히 같아야
+              합니다.
+            </MetaLine>
 
             <Title style={{ marginTop: 14, fontSize: 18 }}>적용 전 짝 (수동 수정 가능)</Title>
             {draftPairs.length === 0 ? (
-              <EmptyHint>먼저 &quot;매칭안 만들기&quot; 또는 &quot;짝 행 추가&quot; 버튼을 눌러주세요.</EmptyHint>
+              <EmptyHint>
+                AI JSON을 「프리뷰에 반영」하거나 「짝 행 추가」로 편집을 시작하세요.
+              </EmptyHint>
             ) : (
               <DraftList>
-                {draftPairs.map((row, idx) => {
-                  const user1Label = row.userId1 ? userMap.get(row.userId1)?.name : "";
-                  const user2Label = row.userId2 ? userMap.get(row.userId2)?.name : "";
-                  return (
-                    <DraftCard key={`${idx}-${row.userId1}-${row.userId2}`}>
-                      <Select
-                        aria-label={`짝 행 ${idx + 1} 첫 번째 유저`}
-                        value={row.userId1}
-                        onChange={(event) =>
+                {draftPairs.map((row, idx) => (
+                  <DraftCard key={`${idx}-${row.name1}-${row.name2}`}>
+                    <Select
+                      aria-label={`짝 행 ${idx + 1} 첫 번째 이름`}
+                      value={row.name1}
+                      onChange={(event) =>
+                        setDraftPairs((pairs) =>
+                          pairs.map((item, cursor) =>
+                            cursor === idx ? { ...item, name1: event.target.value } : item
+                          )
+                        )
+                      }
+                    >
+                      <option value="">이름 선택</option>
+                      {optionsForNameSelect(idx, "name1").map((optionName) => (
+                        <option key={optionName} value={optionName}>
+                          {optionName}
+                        </option>
+                      ))}
+                    </Select>
+                    <Muted>↔︎</Muted>
+                    <Select
+                      aria-label={`짝 행 ${idx + 1} 두 번째 이름`}
+                      value={row.name2}
+                      onChange={(event) =>
+                        setDraftPairs((pairs) =>
+                          pairs.map((item, cursor) =>
+                            cursor === idx ? { ...item, name2: event.target.value } : item
+                          )
+                        )
+                      }
+                    >
+                      <option value="">이름 선택</option>
+                      {optionsForNameSelect(idx, "name2").map((optionName) => (
+                        <option key={optionName} value={optionName}>
+                          {optionName}
+                        </option>
+                      ))}
+                    </Select>
+                    <SideStack>
+                      <MiniButton
+                        type="button"
+                        onClick={() =>
                           setDraftPairs((pairs) =>
-                            pairs.map((item, cursor) =>
-                              cursor === idx ? { ...item, userId1: event.target.value } : item
-                            )
+                            pairs.filter((_, removalIdx) => removalIdx !== idx)
                           )
                         }
                       >
-                        <option value="">유저 선택</option>
-                        {optionsForSelect(idx, "userId1").map((user) => (
-                          <option key={user._id} value={user._id}>
-                            {user.name}
-                          </option>
-                        ))}
-                      </Select>
-                      <Muted>↔︎</Muted>
-                      <Select
-                        aria-label={`짝 행 ${idx + 1} 두 번째 유저`}
-                        value={row.userId2}
-                        onChange={(event) =>
-                          setDraftPairs((pairs) =>
-                            pairs.map((item, cursor) =>
-                              cursor === idx ? { ...item, userId2: event.target.value } : item
-                            )
-                          )
-                        }
-                      >
-                        <option value="">유저 선택</option>
-                        {optionsForSelect(idx, "userId2").map((user) => (
-                          <option key={user._id} value={user._id}>
-                            {user.name}
-                          </option>
-                        ))}
-                      </Select>
-                      <SideStack>
-                        <MiniButton
-                          type="button"
-                          onClick={() =>
-                            setDraftPairs((pairs) =>
-                              pairs.filter((_, removalIdx) => removalIdx !== idx)
-                            )
-                          }
-                        >
-                          삭제
-                        </MiniButton>
-                        {(user1Label || user2Label) && (
-                          <PreviewHint>{`${user1Label || "?"} ❤️ ${user2Label || "?"}`}</PreviewHint>
-                        )}
-                      </SideStack>
-                    </DraftCard>
-                  );
-                })}
+                        삭제
+                      </MiniButton>
+                      {(row.name1 || row.name2) && (
+                        <PreviewHint>{`${row.name1 || "?"} ❤️ ${row.name2 || "?"}`}</PreviewHint>
+                      )}
+                    </SideStack>
+                  </DraftCard>
+                ))}
               </DraftList>
             )}
 
             <Row wrap>
+              <Button
+                type="button"
+                onClick={() => setDraftPairs((rows) => [...rows, { name1: "", name2: "" }])}
+              >
+                짝 행 추가
+              </Button>
               <Button onClick={applyDraftPairs} disabled={matchBusy}>
                 선택한 짝 DB 적용
               </Button>
@@ -774,21 +774,35 @@ const Td = styled.td`
   white-space: nowrap;
 `;
 
-const Bullets = styled.ul`
-  margin: 0;
-  padding-left: 18px;
-  color: ${colors.grayscale.$07};
-  font-size: 13px;
-`;
-
-const Bullet = styled.li`
-  margin-bottom: 6px;
-`;
-
 const MetaLine = styled.p`
   margin: 0;
   font-size: 13px;
   color: ${colors.grayscale.$07};
+`;
+
+const JsonBlockLabel = styled.label`
+  font-family: ${fonts.pretendard.$600};
+  font-size: 13px;
+  color: ${colors.secondary.black};
+`;
+
+const JsonPasteArea = styled.textarea`
+  width: 100%;
+  min-height: 160px;
+  border-radius: 10px;
+  border: 1px solid ${colors.grayscale.$09};
+  padding: 10px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.45;
+  resize: vertical;
+  box-sizing: border-box;
+
+  &:focus {
+    outline: none;
+    border-color: ${colors.primary.$01};
+    box-shadow: 0 0 0 2px rgba(104, 80, 251, 0.2);
+  }
 `;
 
 const EmptyHint = styled.p`

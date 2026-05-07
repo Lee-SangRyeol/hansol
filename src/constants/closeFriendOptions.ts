@@ -6,7 +6,7 @@ export const CLOSE_FRIEND_OPTIONS = [
   "소연",
   "서영",
   "원태",
-  "상렬",
+  "형빈",
   "하은",
   "지인",
   "성호",

@@ -10,7 +10,8 @@
     "migrate:teamscore-to-friendscorelog": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' node --env-file=.env -r ts-node/register/transpile-only src/scripts/migrations/migrate-teamscore-to-friendscorelog.ts",
     "migrate:user-team-to-friendid": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' node --env-file=.env -r ts-node/register/transpile-only src/scripts/migrations/migrate-user-team-to-friendid.ts",
     "migrate:all": "npm run migrate:team-to-friend && npm run migrate:teamscore-to-friendscorelog && npm run migrate:user-team-to-friendid",
-    "seed:dummy-onboarding": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' node --env-file=.env -r ts-node/register/transpile-only src/scripts/seed/dummy-onboarding-users.ts"
+    "seed:dummy-onboarding": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' node --env-file=.env -r ts-node/register/transpile-only src/scripts/seed/dummy-onboarding-users.ts",
+    "seed:charades-dummy": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' node --env-file=.env -r ts-node/register/transpile-only src/scripts/seed/charades-dummy-questions.ts"
   },
   "dependencies": {
     "@apollo/client": "^3.7.0",

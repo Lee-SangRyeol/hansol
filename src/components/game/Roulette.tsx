@@ -38,9 +38,16 @@ const Roulette = () => {
 
   const timeoutIdsRef = useRef<number[]>([]);
   const spinGenerationRef = useRef(0);
+  const isSpinningRef = useRef(false);
+
+  useEffect(() => {
+    isSpinningRef.current = isSpinning;
+  }, [isSpinning]);
 
   const clearSpinTimeouts = useCallback(() => {
-    timeoutIdsRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId));
+    timeoutIdsRef.current.forEach((timeoutId) =>
+      window.clearTimeout(timeoutId)
+    );
     timeoutIdsRef.current = [];
   }, []);
 
@@ -76,6 +83,7 @@ const Roulette = () => {
         const singleTimeoutId = window.setTimeout(() => {
           if (spinGenerationRef.current !== generation) return;
           setIsSpinning(false);
+          setHighlightIndex(null);
           setWinner(list[0]);
         }, Math.min(payload.spinDurationMs, 2400));
         timeoutIdsRef.current.push(singleTimeoutId);
@@ -90,7 +98,10 @@ const Roulette = () => {
       );
 
       const transitionCount = sequence.length - 1;
-      const stepMs = splitSpinDurationsEaseOut(transitionCount, payload.spinDurationMs);
+      const stepMs = splitSpinDurationsEaseOut(
+        transitionCount,
+        payload.spinDurationMs
+      );
 
       setCandidates(list);
       setWinner(null);
@@ -99,13 +110,18 @@ const Roulette = () => {
 
       if (transitionCount <= 0) {
         setIsSpinning(false);
+        setHighlightIndex(null);
         const resolved = list[winnerIdx];
         if (resolved) setWinner(resolved);
         return;
       }
 
       let accumulated = 0;
-      for (let stepPointer = 0; stepPointer < transitionCount; stepPointer += 1) {
+      for (
+        let stepPointer = 0;
+        stepPointer < transitionCount;
+        stepPointer += 1
+      ) {
         accumulated += stepMs[stepPointer];
         const nextCandidateIndex = sequence[stepPointer + 1];
         const fireAt = accumulated;
@@ -114,6 +130,7 @@ const Roulette = () => {
           setHighlightIndex(nextCandidateIndex);
           if (stepPointer === transitionCount - 1) {
             setIsSpinning(false);
+            setHighlightIndex(null);
             const resolved = list[winnerIdx];
             if (resolved) setWinner(resolved);
           }
@@ -127,9 +144,13 @@ const Roulette = () => {
     socket.on("roulette_candidates", (data: Candidate[]) => {
       setCandidates(data);
       setLoadError("");
+      if (!isSpinningRef.current) {
+        setHighlightIndex(null);
+      }
     });
 
     socket.on("roulette_result", (payload: { winner: Candidate | null }) => {
+      setHighlightIndex(null);
       setWinner(payload.winner ?? null);
     });
 
@@ -160,7 +181,7 @@ const Roulette = () => {
   return (
     <Container>
       <Card>
-        <Title>룰렛 후보</Title>
+        <Title>룰렛</Title>
         <WheelArea>
           {loadError ? (
             <StateMessage title="문제가 발생했어요" description={loadError} />
@@ -190,18 +211,19 @@ const Roulette = () => {
           ) : (
             <EmptyText>남은 후보가 없습니다.</EmptyText>
           )}
-          {isSpinning && candidates.length ? <SpinningBadge>스핀 중…</SpinningBadge> : null}
         </WheelArea>
 
         {winner && (
           <WinnerBox>
-            <WinnerLabel>당첨 단짝</WinnerLabel>
             <WinnerName>{winner.name}</WinnerName>
           </WinnerBox>
         )}
 
         {session?.user?.role === "admin" && (
-          <SpinButton onClick={handleSpin} disabled={!candidates.length || isSpinning}>
+          <SpinButton
+            onClick={handleSpin}
+            disabled={!candidates.length || isSpinning}
+          >
             룰렛 돌리기
           </SpinButton>
         )}

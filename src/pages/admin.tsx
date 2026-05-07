@@ -49,7 +49,9 @@ export default function AdminPage() {
   const [friends, setFriends] = useState<FriendData[]>([]);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [selectedFriendId, setSelectedFriendId] = useState("");
-  const [selectedPresetPoints, setSelectedPresetPoints] = useState<number | null>(null);
+  const [selectedPresetPoints, setSelectedPresetPoints] = useState<
+    number | null
+  >(null);
 
   const [draftPairs, setDraftPairs] = useState<DraftPairRow[]>([]);
   const [aiPasteText, setAiPasteText] = useState("");
@@ -60,11 +62,16 @@ export default function AdminPage() {
     [users]
   );
 
-  const participantExportRows = useMemo(() => buildParticipantRows(users), [users]);
+  const participantExportRows = useMemo(
+    () => buildParticipantRows(users),
+    [users]
+  );
 
   const questionCategories = useMemo(
     () =>
-      Array.from(new Set(questions.map((question) => question.category))).filter(Boolean),
+      Array.from(
+        new Set(questions.map((question) => question.category))
+      ).filter(Boolean),
     [questions]
   );
 
@@ -145,7 +152,9 @@ export default function AdminPage() {
 
   const handleCopyAiPrompt = async () => {
     if (!participantExportRows.length) {
-      alert("복사할 데이터가 없습니다. 짱칭 1·2·3순위가 모두 입력된 유저가 필요합니다.");
+      alert(
+        "복사할 데이터가 없습니다. 짱칭 1·2·3순위가 모두 입력된 유저가 필요합니다."
+      );
       return;
     }
     const promptText = buildFullAiPrompt(participantExportRows);
@@ -166,15 +175,21 @@ export default function AdminPage() {
           name2: pairRow.name2,
         }))
       );
-      alert(`프리뷰에 ${namePairs.length}개의 짝을 반영했습니다. 필요하면 수정 후 적용하세요.`);
+      alert(
+        `프리뷰에 ${namePairs.length}개의 짝을 반영했습니다. 필요하면 수정 후 적용하세요.`
+      );
     } catch (error) {
-      alert(error instanceof Error ? error.message : "JSON을 해석하지 못했습니다.");
+      alert(
+        error instanceof Error ? error.message : "JSON을 해석하지 못했습니다."
+      );
     }
   };
 
   const applyDraftPairs = async () => {
     if (!unlockedPin) return;
-    const idByName = new Map(unmatchedUsers.map((userRow) => [userRow.name, userRow._id]));
+    const idByName = new Map(
+      unmatchedUsers.map((userRow) => [userRow.name, userRow._id])
+    );
 
     const sanitized: { userId1: string; userId2: string }[] = [];
     for (const pairRow of draftPairs) {
@@ -276,7 +291,7 @@ export default function AdminPage() {
   const emitRoulette = () => socket?.emit("roulette_spin_request");
   const emitRouletteReset = () => {
     const ok = confirm(
-      "모든 단짝을 룰렛 후보로 다시 넣습니다(roulette 보장). 진행중인 스핀은 중단됩니다. 계속할까요?"
+      "모든 단짝을 룰렛 후보로 다시 넣습니다(roulette 보장). 진행중인 은 중단됩니다. 계속할까요?"
     );
     if (!ok) return;
     socket?.emit("roulette_reset_request");
@@ -348,7 +363,10 @@ export default function AdminPage() {
           </Row>
           <Row>
             {questionCategories.map((category) => (
-              <Button key={category} onClick={() => emitQuestionCategory(category)}>
+              <Button
+                key={category}
+                onClick={() => emitQuestionCategory(category)}
+              >
                 {category}
               </Button>
             ))}
@@ -404,18 +422,22 @@ export default function AdminPage() {
               </Table>
             </TableScroll>
 
-            <Title style={{ marginTop: 14, fontSize: 18 }}>AI 매칭 (프롬프트 복사)</Title>
+            <Title style={{ marginTop: 14, fontSize: 18 }}>
+              AI 매칭 (프롬프트 복사)
+            </Title>
             <SubLabel>
-              아래 버튼으로 규칙 + 참가자 JSON 전체를 복사한 뒤 AI에 붙여넣습니다. 응답 JSON을 하단
-              입력란에 넣고 「프리뷰에 반영」을 누르면 아래 짝 표가 채워집니다. 드롭다운 옵션은
-              온보딩과 동일한 이름 풀({CLOSE_FRIEND_OPTIONS.length}명)입니다.
+              아래 버튼으로 규칙 + 참가자 JSON 전체를 복사한 뒤 AI에
+              붙여넣습니다. 응답 JSON을 하단 입력란에 넣고 「프리뷰에 반영」을
+              누르면 아래 짝 표가 채워집니다. 드롭다운 옵션은 온보딩과 동일한
+              이름 풀({CLOSE_FRIEND_OPTIONS.length}명)입니다.
             </SubLabel>
             <Row wrap>
               <Button type="button" onClick={handleCopyAiPrompt}>
                 규칙 + 데이터 프롬프트 복사
               </Button>
               <MetaLine style={{ flex: "1 1 100%" }}>
-                내보내기 가능 인원: {participantExportRows.length}명 (짱칭 3명 모두 입력된 유저)
+                내보내기 가능 인원: {participantExportRows.length}명 (짱칭 3명
+                모두 입력된 유저)
               </MetaLine>
             </Row>
 
@@ -435,14 +457,17 @@ export default function AdminPage() {
             </Row>
 
             <MetaLine>
-              단짝 미배정 유저 {unmatchedUsers.length}명 · 적용 시 이름이 DB display name과 정확히 같아야
-              합니다.
+              단짝 미배정 유저 {unmatchedUsers.length}명 · 적용 시 이름이 DB
+              display name과 정확히 같아야 합니다.
             </MetaLine>
 
-            <Title style={{ marginTop: 14, fontSize: 18 }}>적용 전 짝 (수동 수정 가능)</Title>
+            <Title style={{ marginTop: 14, fontSize: 18 }}>
+              적용 전 짝 (수동 수정 가능)
+            </Title>
             {draftPairs.length === 0 ? (
               <EmptyHint>
-                AI JSON을 「프리뷰에 반영」하거나 「짝 행 추가」로 편집을 시작하세요.
+                AI JSON을 「프리뷰에 반영」하거나 「짝 행 추가」로 편집을
+                시작하세요.
               </EmptyHint>
             ) : (
               <DraftList>
@@ -454,7 +479,9 @@ export default function AdminPage() {
                       onChange={(event) =>
                         setDraftPairs((pairs) =>
                           pairs.map((item, cursor) =>
-                            cursor === idx ? { ...item, name1: event.target.value } : item
+                            cursor === idx
+                              ? { ...item, name1: event.target.value }
+                              : item
                           )
                         )
                       }
@@ -473,7 +500,9 @@ export default function AdminPage() {
                       onChange={(event) =>
                         setDraftPairs((pairs) =>
                           pairs.map((item, cursor) =>
-                            cursor === idx ? { ...item, name2: event.target.value } : item
+                            cursor === idx
+                              ? { ...item, name2: event.target.value }
+                              : item
                           )
                         )
                       }
@@ -497,7 +526,9 @@ export default function AdminPage() {
                         삭제
                       </MiniButton>
                       {(row.name1 || row.name2) && (
-                        <PreviewHint>{`${row.name1 || "?"} ❤️ ${row.name2 || "?"}`}</PreviewHint>
+                        <PreviewHint>{`${row.name1 || "?"} ❤️ ${
+                          row.name2 || "?"
+                        }`}</PreviewHint>
                       )}
                     </SideStack>
                   </DraftCard>
@@ -508,7 +539,9 @@ export default function AdminPage() {
             <Row wrap>
               <Button
                 type="button"
-                onClick={() => setDraftPairs((rows) => [...rows, { name1: "", name2: "" }])}
+                onClick={() =>
+                  setDraftPairs((rows) => [...rows, { name1: "", name2: "" }])
+                }
               >
                 짝 행 추가
               </Button>
@@ -522,107 +555,119 @@ export default function AdminPage() {
 
       {tab === "score" && (
         <ScoreTabGrow>
-        <ScoreSection aria-label="점수 부여">
-          <ScoreTitleRow>
-            <Title style={{ margin: 0 }}>점수 부여</Title>
-            <ScoreHintText>
-              상위 {SCORE_SLOTS}팀 빠른 선택 · 랭킹 실시간 반영은 소켓 기준입니다
-            </ScoreHintText>
-          </ScoreTitleRow>
+          <ScoreSection aria-label="점수 부여">
+            <ScoreTitleRow>
+              <Title style={{ margin: 0 }}>점수 부여</Title>
+              <ScoreHintText>
+                상위 {SCORE_SLOTS}팀 빠른 선택 · 랭킹 실시간 반영은 소켓
+                기준입니다
+              </ScoreHintText>
+            </ScoreTitleRow>
 
-          <ScoreWorkbench>
-            <RankColumn>
-              <RankHeading>순위</RankHeading>
-              <RankScroller>
-                {rankedFriends.length === 0 ? (
-                  <RankEmptyText>등록된 단짝이 없습니다.</RankEmptyText>
-                ) : (
-                  rankedFriends.map((friendRow, rankingIndex) => (
-                    <RankRow key={friendRow._id}>
-                      <RankBadge>{rankingIndex + 1}</RankBadge>
-                      <RankName>{friendRow.name}</RankName>
-                      <RankPoints>{friendRow.totalScore.toLocaleString("ko-KR")}점</RankPoints>
-                    </RankRow>
-                  ))
-                )}
-              </RankScroller>
-            </RankColumn>
-
-            <ControlColumn>
-              <ControlHalf>
-                <ControlLabel>부여 점수</ControlLabel>
-                <PresetGrid>
-                  {PRESET_POINTS.map((points) => (
-                    <PresetButton
-                      key={points}
-                      type="button"
-                      $active={selectedPresetPoints === points}
-                      onClick={() =>
-                        setSelectedPresetPoints((current) =>
-                          current === points ? null : points
-                        )
-                      }
-                    >
-                      {points}점
-                    </PresetButton>
-                  ))}
-                </PresetGrid>
-              </ControlHalf>
-
-              <ControlHalf>
-                <ControlLabel>단짝 선택 (랭킹 상위 {SCORE_SLOTS}팀)</ControlLabel>
-                <FriendSlotGrid>
-                  {friendPickerSlots.map((slotFriend, slotIndex) => {
-                    const isSelected =
-                      Boolean(slotFriend) && selectedFriendId === slotFriend!._id;
-                    return (
-                      <FriendSlotButton
-                        key={slotFriend?._id ?? `empty-${slotIndex}`}
-                        type="button"
-                        disabled={!slotFriend}
-                        $active={isSelected}
-                        onClick={() => {
-                          if (!slotFriend) return;
-                          setSelectedFriendId((current) =>
-                            current === slotFriend._id ? "" : slotFriend._id
-                          );
-                        }}
-                      >
-                        <SlotIndex>{slotIndex + 1}</SlotIndex>
-                        <SlotName>{slotFriend ? slotFriend.name : "—"}</SlotName>
-                        {slotFriend ? (
-                          <SlotScore>{slotFriend.totalScore.toLocaleString("ko-KR")}점</SlotScore>
-                        ) : (
-                          <SlotScore>빈 슬롯</SlotScore>
-                        )}
-                      </FriendSlotButton>
-                    );
-                  })}
-                </FriendSlotGrid>
-              </ControlHalf>
-
-              <GrantRow>
-                <GrantSummary>
-                  {selectedPresetPoints ? (
-                    <>
-                      <strong>{selectedPresetPoints}점</strong>
-                      {selectedFriendId
-                        ? ` · ${
-                            friends.find((item) => item._id === selectedFriendId)?.name ?? ""
-                          }`
-                        : " · 단짝 미선택"}
-                    </>
+            <ScoreWorkbench>
+              <RankColumn>
+                <RankHeading>순위</RankHeading>
+                <RankScroller>
+                  {rankedFriends.length === 0 ? (
+                    <RankEmptyText>등록된 단짝이 없습니다.</RankEmptyText>
                   ) : (
-                    "점수를 선택해 주세요"
+                    rankedFriends.map((friendRow, rankingIndex) => (
+                      <RankRow key={friendRow._id}>
+                        <RankBadge>{rankingIndex + 1}</RankBadge>
+                        <RankName>{friendRow.name}</RankName>
+                        <RankPoints>
+                          {friendRow.totalScore.toLocaleString("ko-KR")}점
+                        </RankPoints>
+                      </RankRow>
+                    ))
                   )}
-                </GrantSummary>
-                <GrantButton type="button" onClick={handleGrantPresetScore}>
-                  점수 부여
-                </GrantButton>
-              </GrantRow>
-            </ControlColumn>
-          </ScoreWorkbench>
-        </ScoreSection>
+                </RankScroller>
+              </RankColumn>
+
+              <ControlColumn>
+                <ControlHalf>
+                  <ControlLabel>부여 점수</ControlLabel>
+                  <PresetGrid>
+                    {PRESET_POINTS.map((points) => (
+                      <PresetButton
+                        key={points}
+                        type="button"
+                        $active={selectedPresetPoints === points}
+                        onClick={() =>
+                          setSelectedPresetPoints((current) =>
+                            current === points ? null : points
+                          )
+                        }
+                      >
+                        {points}점
+                      </PresetButton>
+                    ))}
+                  </PresetGrid>
+                </ControlHalf>
+
+                <ControlHalf>
+                  <ControlLabel>
+                    단짝 선택 (랭킹 상위 {SCORE_SLOTS}팀)
+                  </ControlLabel>
+                  <FriendSlotGrid>
+                    {friendPickerSlots.map((slotFriend, slotIndex) => {
+                      const isSelected =
+                        Boolean(slotFriend) &&
+                        selectedFriendId === slotFriend!._id;
+                      return (
+                        <FriendSlotButton
+                          key={slotFriend?._id ?? `empty-${slotIndex}`}
+                          type="button"
+                          disabled={!slotFriend}
+                          $active={isSelected}
+                          onClick={() => {
+                            if (!slotFriend) return;
+                            setSelectedFriendId((current) =>
+                              current === slotFriend._id ? "" : slotFriend._id
+                            );
+                          }}
+                        >
+                          <SlotIndex>{slotIndex + 1}</SlotIndex>
+                          <SlotName>
+                            {slotFriend ? slotFriend.name : "—"}
+                          </SlotName>
+                          {slotFriend ? (
+                            <SlotScore>
+                              {slotFriend.totalScore.toLocaleString("ko-KR")}점
+                            </SlotScore>
+                          ) : (
+                            <SlotScore>빈 슬롯</SlotScore>
+                          )}
+                        </FriendSlotButton>
+                      );
+                    })}
+                  </FriendSlotGrid>
+                </ControlHalf>
+
+                <GrantRow>
+                  <GrantSummary>
+                    {selectedPresetPoints ? (
+                      <>
+                        <strong>{selectedPresetPoints}점</strong>
+                        {selectedFriendId
+                          ? ` · ${
+                              friends.find(
+                                (item) => item._id === selectedFriendId
+                              )?.name ?? ""
+                            }`
+                          : " · 단짝 미선택"}
+                      </>
+                    ) : (
+                      "점수를 선택해 주세요"
+                    )}
+                  </GrantSummary>
+                  <GrantButton type="button" onClick={handleGrantPresetScore}>
+                    점수 부여
+                  </GrantButton>
+                </GrantRow>
+              </ControlColumn>
+            </ScoreWorkbench>
+          </ScoreSection>
         </ScoreTabGrow>
       )}
     </Page>

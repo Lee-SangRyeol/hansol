@@ -5,7 +5,11 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "migrate:team-to-friend": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' node --env-file=.env -r ts-node/register/transpile-only src/scripts/migrations/migrate-team-to-friend.ts",
+    "migrate:teamscore-to-friendscorelog": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' node --env-file=.env -r ts-node/register/transpile-only src/scripts/migrations/migrate-teamscore-to-friendscorelog.ts",
+    "migrate:user-team-to-friendid": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' node --env-file=.env -r ts-node/register/transpile-only src/scripts/migrations/migrate-user-team-to-friendid.ts",
+    "migrate:all": "npm run migrate:team-to-friend && npm run migrate:teamscore-to-friendscorelog && npm run migrate:user-team-to-friendid"
   },
   "dependencies": {
     "@apollo/client": "^3.7.0",

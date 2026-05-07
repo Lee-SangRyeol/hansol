@@ -42,7 +42,7 @@ const BlackboardModal = ({ onClose, onAddContent }: BlackboardModalProps) => {
 
   const handleGameSelect = (game: GameData) => {
     setSelectedGame(game);
-    
+
     // 팀지목인 경우 팀 목록을 가져옴
     if (game.id === "team-selection") {
       fetchTeams();
@@ -60,9 +60,12 @@ const BlackboardModal = ({ onClose, onAddContent }: BlackboardModalProps) => {
 
   const handlePreviousItem = () => {
     if (selectedCategory) {
-      const newIndex = currentItemIndex === 0 ? selectedCategory.items.length - 1 : currentItemIndex - 1;
+      const newIndex =
+        currentItemIndex === 0
+          ? selectedCategory.items.length - 1
+          : currentItemIndex - 1;
       setCurrentItemIndex(newIndex);
-      
+
       // 칠판에 즉시 업데이트
       if (selectedGame && selectedCategory) {
         const content = selectedCategory.items[newIndex];
@@ -73,9 +76,12 @@ const BlackboardModal = ({ onClose, onAddContent }: BlackboardModalProps) => {
 
   const handleNextItem = () => {
     if (selectedCategory) {
-      const newIndex = currentItemIndex === selectedCategory.items.length - 1 ? 0 : currentItemIndex + 1;
+      const newIndex =
+        currentItemIndex === selectedCategory.items.length - 1
+          ? 0
+          : currentItemIndex + 1;
       setCurrentItemIndex(newIndex);
-      
+
       // 칠판에 즉시 업데이트
       if (selectedGame && selectedCategory) {
         const content = selectedCategory.items[newIndex];
@@ -152,7 +158,7 @@ const BlackboardModal = ({ onClose, onAddContent }: BlackboardModalProps) => {
                 <BackButton onClick={handleBackToGames}>← 뒤로</BackButton>
                 <SectionTitle>팀 지목</SectionTitle>
               </SectionHeader>
-              
+
               {loadingTeams ? (
                 <LoadingText>팀 목록을 불러오는 중...</LoadingText>
               ) : teams.length === 0 ? (
@@ -237,9 +243,7 @@ const BlackboardModal = ({ onClose, onAddContent }: BlackboardModalProps) => {
                 <AddButton onClick={handleAddToBlackboard}>
                   칠판에 추가
                 </AddButton>
-                <InfoText>
-                  화살표를 눌러서 다음/이전 항목을 확인하세요
-                </InfoText>
+                <InfoText>화살표를 눌러서 다음/이전 항목을 확인하세요</InfoText>
               </ActionButtons>
             </ItemSelection>
           )}

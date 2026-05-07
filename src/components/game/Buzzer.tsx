@@ -170,22 +170,21 @@ const Container = styled.div`
   flex-direction: column;
   height: 85%;
   padding: 20px;
-  background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
-  color: white;
+  background: ${colors.secondary.$01};
+  color: ${colors.secondary.black};
 `;
 
 const TopCard = styled.div`
   flex: 1;
-  background: linear-gradient(145deg, #2d2d2d, #1a1a1a);
+  background: ${colors.secondary.white};
   border-radius: 20px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5),
-    inset 0 2px 4px rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10px 24px rgba(25, 25, 25, 0.12);
   padding: 24px;
   position: relative;
   overflow-y: auto;
   user-select: none;
   -webkit-user-select: none;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid ${colors.grayscale.$10};
   margin-bottom: 20px;
 
   &::-webkit-scrollbar {
@@ -306,25 +305,20 @@ const OrderListText = styled.div`
   align-items: center;
   width: 100%;
   height: 80px;
-  background: rgba(0, 0, 0, 0.2);
+  background: ${colors.grayscale.$10};
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
+  border: 1px solid ${colors.grayscale.$09};
   transition: all 0.3s ease;
 
   &:hover {
-    background: rgba(0, 0, 0, 0.3);
+    background: ${colors.grayscale.$09};
     transform: translateX(4px);
   }
 `;
 
 const OrderListText1St = styled(OrderListText)`
-  background: linear-gradient(
-    90deg,
-    rgba(102, 126, 234, 0.2),
-    rgba(0, 0, 0, 0.2)
-  );
-  border: 1px solid rgba(102, 126, 234, 0.3);
+  background: ${colors.secondary.$01};
+  border: 1px solid ${colors.primary.$03};
   transform: scale(1.02);
   box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
 
@@ -350,29 +344,28 @@ const IconWrapper = styled.div`
 const NameWrapper1st = styled.div`
   flex: 1;
   text-align: center;
-  color: #29ff69;
+  color: ${colors.primary.$01};
   font-size: 28px;
   font-family: ${fonts.pretendard.$800};
-  text-shadow: 0 0 10px rgba(41, 255, 105, 0.4);
   letter-spacing: 1px;
 `;
 
 const NameWrapper = styled.div`
   flex: 1;
   text-align: center;
-  color: rgba(255, 255, 255, 0.9);
+  color: ${colors.secondary.black};
   font-size: 20px;
   font-family: ${fonts.pretendard.$600};
   transition: color 0.3s ease;
 
   &:hover {
-    color: white;
+    color: ${colors.secondary.black};
   }
 `;
 
 const Divider = styled.div`
   width: 60%;
-  border-top: 2px dotted rgba(255, 255, 255, 0.2);
+  border-top: 2px dotted ${colors.grayscale.$08};
   margin: auto;
 `;
 

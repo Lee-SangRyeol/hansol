@@ -4,17 +4,17 @@ import styled from "styled-components";
 import { colors, fonts } from "@/constants";
 import { useSession } from "next-auth/react";
 import { showToast } from "@/components/toastBar";
-import { useRouter } from "next/navigation";
+import { useRouter } from "next/router";
 import Buzzer from "../components/game/Buzzer";
-import Blackboard from "../components/game/Blackboard";
-import Reasoning from "../components/game/Reasoning";
+import Roulette from "../components/game/Roulette";
+import QuestionBoard from "../components/game/QuestionBoard";
 
-type TabType = "buzzer" | "blackboard" | "reasoning";
+type TabType = "roulette" | "buzzer" | "question";
 
 const Game = () => {
   const { data: session } = useSession();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<TabType>("buzzer");
+  const [activeTab, setActiveTab] = useState<TabType>("roulette");
 
   useEffect(() => {
     if (!session?.user?.name) {
@@ -29,19 +29,19 @@ const Game = () => {
   }
 
   const tabs = [
+    { id: "roulette" as TabType, label: "룰렛", icon: "🎯" },
     { id: "buzzer" as TabType, label: "버저", icon: "🔔" },
-    { id: "blackboard" as TabType, label: "칠판", icon: "📝" },
-    { id: "reasoning" as TabType, label: "추리", icon: "🔍" },
+    { id: "question" as TabType, label: "문제", icon: "📝" },
   ];
 
   const renderActiveTab = () => {
     switch (activeTab) {
+      case "roulette":
+        return <Roulette />;
       case "buzzer":
         return <Buzzer />;
-      case "blackboard":
-        return <Blackboard />;
-      case "reasoning":
-        return <Reasoning />;
+      case "question":
+        return <QuestionBoard />;
       default:
         return null;
     }
@@ -73,28 +73,24 @@ const Container = styled.div`
   display: flex;
   flex-direction: column;
   height: 100vh;
-  background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
-  color: white;
+  background: ${colors.secondary.$01};
+  color: ${colors.secondary.black};
 `;
 
 const HeaderSection = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 10px 0px;
-  background: linear-gradient(145deg, #1a1a1a, #2d2d2d);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  padding: 16px 0px 10px;
 `;
 
 const TabContainer = styled.div`
   display: flex;
-  background: rgba(0, 0, 0, 0.3);
+  background: ${colors.secondary.white};
   border-radius: 16px;
   gap: 4px;
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+  padding: 4px;
+  box-shadow: 0 10px 24px rgba(25, 25, 25, 0.12);
 `;
 
 const TabButton = styled.button<{ $isActive: boolean }>`
@@ -106,9 +102,10 @@ const TabButton = styled.button<{ $isActive: boolean }>`
   border: none;
   background: ${(props) =>
     props.$isActive
-      ? "linear-gradient(145deg, #667eea, #764ba2)"
+      ? colors.primary.$01
       : "transparent"};
-  color: ${(props) => (props.$isActive ? "white" : "rgba(255, 255, 255, 0.7)")};
+  color: ${(props) =>
+    props.$isActive ? colors.secondary.white : colors.grayscale.$06};
   border-radius: 12px;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -123,25 +120,15 @@ const TabButton = styled.button<{ $isActive: boolean }>`
     left: 0;
     right: 0;
     bottom: 0;
-    background: ${(props) =>
-      props.$isActive
-        ? "linear-gradient(145deg, rgba(255, 255, 255, 0.1), transparent)"
-        : "transparent"};
+    background: transparent;
     opacity: ${(props) => (props.$isActive ? 1 : 0)};
     transition: opacity 0.3s ease;
   }
 
   &:hover {
-    background: ${(props) =>
-      props.$isActive
-        ? "linear-gradient(145deg, #667eea, #764ba2)"
-        : "rgba(255, 255, 255, 0.1)"};
-    color: white;
-    transform: translateY(-2px);
-    box-shadow: ${(props) =>
-      props.$isActive
-        ? "0 8px 25px rgba(102, 126, 234, 0.4)"
-        : "0 4px 15px rgba(0, 0, 0, 0.2)"};
+    background: ${(props) => (props.$isActive ? colors.primary.$01 : colors.grayscale.$10)};
+    color: ${(props) =>
+      props.$isActive ? colors.secondary.white : colors.secondary.black};
   }
 
   &:active {
@@ -161,13 +148,12 @@ const TabLabel = styled.span`
   font-size: 13px;
   z-index: 1;
   position: relative;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 `;
 
 const ContentContainer = styled.div`
   flex: 1;
   overflow: hidden;
-  background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
+  background: ${colors.secondary.$01};
 `;
 
 Game.getLayout = function getLayout(page: ReactElement) {

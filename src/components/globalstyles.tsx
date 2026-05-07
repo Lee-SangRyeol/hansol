@@ -8,7 +8,7 @@ const GlobalStyle = createGlobalStyle`
     color: ${({ theme }) => theme.colors.primary};
     padding: 0;
     margin: 0;
-    background-color: ${colors.grayscale.$05};
+    background-color: ${colors.secondary.$01};
     min-height: 100vh;
       user-select: none;
   -webkit-user-select: none;

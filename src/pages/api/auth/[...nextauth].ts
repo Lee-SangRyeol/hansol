@@ -55,17 +55,37 @@ export const authOptions: NextAuthOptions = {
     async signIn({ user, profile }) {
       try {
         await connectDB();
+        if (!user.id) {
+          console.error("Kakao signIn failed: missing user.id");
+          return false;
+        }
 
         const kakaoProfile = profile as {
           properties?: { profile_image?: string };
         };
         const profileImage = kakaoProfile.properties?.profile_image;
+        const snsId = String(user.id);
+        const displayName = user.name?.trim() || `kakao-${snsId}`;
 
         await User.findOneAndUpdate(
-          { name: user.name },
+          { snsId },
           {
-            snsId: user.id,
-            image: profileImage,
+            $set: {
+              snsId,
+              name: displayName,
+              image: profileImage,
+            },
+            $setOnInsert: {
+              role: "user",
+              team: "",
+              score: 0,
+              character: "",
+              tmi: "",
+              prayerTopic: "",
+              closeFriends: [],
+              bibleVerse: "",
+              onboardingCompleted: false,
+            },
           },
           { upsert: true, new: true }
         );

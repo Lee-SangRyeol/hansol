@@ -2,11 +2,13 @@
 import { Server } from "socket.io";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { Server as NetServer } from "http";
+import { getToken } from "next-auth/jwt";
 import { connectDB } from "@/lib/mongodb";
-import Team from "@/models/Team";
+import Friend from "@/models/Friend";
 import User from "@/models/User";
-import TeamScore from "@/models/TeamScore";
+import FriendScoreLog from "@/models/FriendScoreLog";
 import Score from "@/models/Score";
+import GameQuestion from "@/models/GameQuestion";
 
 export const config = {
   api: {
@@ -56,14 +58,39 @@ export default async function handler(
     const MAX_BUZZER_ORDER = 5;
     let gameStarted = false;
     let blackboardItems: BlackboardItem[] = [];
+    let currentQuestionCategory = "";
+    let currentQuestionIndex = 0;
+    let currentQuestionText = "";
 
     io.on("connection", async (socket) => {
       console.log("A user connected:", socket.id);
+
+      const isAdminSocket = async () => {
+        try {
+          const token = await getToken({
+            req: socket.request as any,
+            secret: process.env.NEXTAUTH_SECRET,
+          });
+          if (!token?.sub) return false;
+          const user = (await User.findOne({ snsId: token.sub })
+            .select("role")
+            .lean()) as { role?: string } | null;
+          return user?.role === "admin";
+        } catch (error) {
+          console.error("Socket admin check failed:", error);
+          return false;
+        }
+      };
 
       // 초기 상태 전달
       socket.emit("buzzer_order", buzzerOrder);
       socket.emit("game_state", gameStarted);
       socket.emit("blackboard_items", blackboardItems);
+      socket.emit("question_state", {
+        category: currentQuestionCategory,
+        index: currentQuestionIndex,
+        text: currentQuestionText,
+      });
       console.log("Initial blackboard items sent:", blackboardItems);
 
       // 버저 입력
@@ -150,7 +177,7 @@ export default async function handler(
       try {
         await connectDB();
 
-        const teams = await Team.find({})
+        const friends = await Friend.find({})
           .select("name totalScore")
           .sort({ totalScore: -1 });
 
@@ -158,22 +185,62 @@ export default async function handler(
           .select("name score")
           .sort({ score: -1 });
 
-        socket.emit("team_data", teams);
+        socket.emit("friend_data", friends);
+        socket.emit("team_data", friends);
         socket.emit("user_data", users);
 
-        socket.on("team_score_update", async (name, updateLog, score) => {
+        socket.on("friend_score_update", async (friendId, name, updateLog, score) => {
           try {
-            await Team.updateOne({ name }, { $inc: { totalScore: score } });
+            let resolvedFriendId = friendId;
+            if (friendId) {
+              await Friend.updateOne({ _id: friendId }, { $inc: { totalScore: score } });
+            } else {
+              const friend = (await Friend.findOne({ name })
+                .select("_id")
+                .lean()) as { _id?: string } | null;
+              if (!friend?._id) return;
+              resolvedFriendId = String(friend._id);
+              await Friend.updateOne({ _id: friend._id }, { $inc: { totalScore: score } });
+            }
 
-            await TeamScore.create({ name, updateLog, score });
+            await FriendScoreLog.create({
+              friendId: resolvedFriendId,
+              name,
+              updateLog,
+              score,
+            });
 
-            const updatedTeams = await Team.find({})
+            const updatedFriends = await Friend.find({})
               .select("name totalScore")
               .sort({ totalScore: -1 });
 
-            io.emit("team_data", updatedTeams);
+            io.emit("friend_data", updatedFriends);
+            io.emit("team_data", updatedFriends);
           } catch (error) {
-            console.error("Team score update error:", error);
+            console.error("Friend score update error:", error);
+          }
+        });
+
+        socket.on("team_score_update", async (name, updateLog, score) => {
+          try {
+            const friend = (await Friend.findOne({ name })
+              .select("_id")
+              .lean()) as { _id?: string } | null;
+            if (!friend?._id) return;
+            await Friend.updateOne({ _id: friend._id }, { $inc: { totalScore: score } });
+            await FriendScoreLog.create({
+              friendId: friend._id,
+              name,
+              updateLog,
+              score,
+            });
+            const updatedFriends = await Friend.find({})
+              .select("name totalScore")
+              .sort({ totalScore: -1 });
+            io.emit("friend_data", updatedFriends);
+            io.emit("team_data", updatedFriends);
+          } catch (error) {
+            console.error("Legacy team score update error:", error);
           }
         });
 
@@ -190,6 +257,118 @@ export default async function handler(
             io.emit("user_data", updatedUsers);
           } catch (error) {
             console.error("Solo score update error:", error);
+          }
+        });
+
+        const emitRouletteCandidates = async () => {
+          const candidates = await Friend.find({ roulette: true })
+            .select("_id name")
+            .lean();
+          io.emit("roulette_candidates", candidates);
+        };
+
+        await emitRouletteCandidates();
+
+        socket.on("roulette_candidates_request", async () => {
+          try {
+            await emitRouletteCandidates();
+          } catch (error) {
+            console.error("Roulette candidates request error:", error);
+          }
+        });
+
+        socket.on("roulette_spin_request", async () => {
+          try {
+            if (!(await isAdminSocket())) return;
+            const candidates = await Friend.find({ roulette: true })
+              .select("_id name")
+              .lean();
+            if (!candidates.length) {
+              io.emit("roulette_result", { winner: null });
+              return;
+            }
+
+            const randomIndex = Math.floor(Math.random() * candidates.length);
+            const winner = candidates[randomIndex];
+
+            await Friend.updateOne({ _id: winner._id }, { $set: { roulette: false } });
+
+            const updatedCandidates = await Friend.find({ roulette: true })
+              .select("_id name")
+              .lean();
+
+            io.emit("roulette_result", { winner });
+            io.emit("roulette_candidates", updatedCandidates);
+          } catch (error) {
+            console.error("Roulette spin error:", error);
+          }
+        });
+
+        const emitQuestionState = () => {
+          io.emit("question_state", {
+            category: currentQuestionCategory,
+            index: currentQuestionIndex,
+            text: currentQuestionText,
+          });
+        };
+
+        socket.on("question_select_category", async (category: string) => {
+          try {
+            if (!(await isAdminSocket())) return;
+            const questions = await GameQuestion.find({
+              category,
+              isActive: true,
+            })
+              .sort({ number: 1, createdAt: 1 })
+              .lean();
+
+            currentQuestionCategory = category;
+            currentQuestionIndex = 0;
+            currentQuestionText = questions[0]?.text ?? "";
+            emitQuestionState();
+          } catch (error) {
+            console.error("Question category select error:", error);
+          }
+        });
+
+        socket.on("question_next", async () => {
+          try {
+            if (!(await isAdminSocket())) return;
+            if (!currentQuestionCategory) return;
+            const questions = await GameQuestion.find({
+              category: currentQuestionCategory,
+              isActive: true,
+            })
+              .sort({ number: 1, createdAt: 1 })
+              .lean();
+            if (!questions.length) return;
+            currentQuestionIndex = Math.min(
+              currentQuestionIndex + 1,
+              questions.length - 1
+            );
+            currentQuestionText = questions[currentQuestionIndex]?.text ?? "";
+            emitQuestionState();
+          } catch (error) {
+            console.error("Question next error:", error);
+          }
+        });
+
+        socket.on("question_prev", async () => {
+          try {
+            if (!(await isAdminSocket())) return;
+            if (!currentQuestionCategory) return;
+            const questions = await GameQuestion.find({
+              category: currentQuestionCategory,
+              isActive: true,
+            })
+              .sort({ number: 1, createdAt: 1 })
+              .lean();
+            if (!questions.length) return;
+            currentQuestionIndex = Math.max(currentQuestionIndex - 1, 0);
+            currentQuestionText = questions[currentQuestionIndex]?.text ?? "";
+            emitQuestionState();
+          } catch (error) {
+            console.error("Question prev error:", error);
           }
         });
       } catch (error) {

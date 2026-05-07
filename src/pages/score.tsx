@@ -1,345 +1,170 @@
-import { ReactElement, useState, useEffect } from "react";
+import { ReactElement, useEffect, useState } from "react";
 import styled from "styled-components";
 import { colors, fonts } from "@/constants";
 import Layout from "../components/layout/layout";
 import { GiTrophyCup } from "react-icons/gi";
 import { io, Socket } from "socket.io-client";
 import { useSession } from "next-auth/react";
-import React from "react";
+import StateMessage from "@/components/common/StateMessage";
 
-interface TeamData {
+interface FriendData {
+  _id: string;
   name: string;
   totalScore: number;
 }
 
-interface UserData {
-  name: string;
-  score: number;
-}
-
-interface TeamScoreHistory {
+interface FriendScoreHistory {
   updateLog: string;
   score: number;
   createdAt: string;
 }
 
-interface SoloScoreHistory {
-  updateLog: string;
-  score: number;
-  createdAt: string;
-}
-
-const ScoreAdmin = () => {
+const ScorePage = () => {
   const { data: session } = useSession();
-  const [activeTab, setActiveTab] = useState<"team" | "solo">("team");
-  const [teamData, setTeamData] = useState<TeamData[]>([]);
-  const [userData, setUserData] = useState<UserData[]>([]);
-  const [reasons, setReasons] = useState<string[]>(["", "", ""]);
-  const [scores, setScores] = useState<string[]>(["", "", ""]);
+  const [friends, setFriends] = useState<FriendData[]>([]);
   const [socket, setSocket] = useState<Socket | null>(null);
-  const [soloReasons, setSoloReasons] = useState<string[]>([]);
-  const [soloScores, setSoloScores] = useState<string[]>([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedTeamHistory, setSelectedTeamHistory] = useState<
-    TeamScoreHistory[]
-  >([]);
-  const [selectedTeamName, setSelectedTeamName] = useState("");
-  const [selectedUserHistory, setSelectedUserHistory] = useState<
-    SoloScoreHistory[]
-  >([]);
-  const [selectedUserName, setSelectedUserName] = useState("");
+  const [reason, setReason] = useState("");
+  const [score, setScore] = useState("");
+  const [selectedFriend, setSelectedFriend] = useState<FriendData | null>(null);
+  const [history, setHistory] = useState<FriendScoreHistory[]>([]);
+  const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
-    // 서버의 Socket.IO 인스턴스를 초기화
     fetch("/api/socket").catch(() => {});
-
     const socketInstance = io({
       path: "/api/socket",
-      // polling 폴백 허용(초기 업그레이드 실패 대비)
       transports: ["websocket", "polling"],
-      // 연결 안정화 옵션
       timeout: 20000,
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-    });
-
-    // socketInstance.on("connect", () => {
-    //   console.log("[socket] connected:", socketInstance.id);
-    // });
-    // socketInstance.on("disconnect", (reason) => {
-    //   console.log("[socket] disconnected:", reason);
-    // });
-    socketInstance.on("connect_error", (err) => {
-      console.error("[socket] connect_error:", err.message);
-    });
-    socketInstance.io.on("reconnect_attempt", (attempt) => {
-      console.log("[socket] reconnect_attempt:", attempt);
     });
 
     setSocket(socketInstance);
 
-    socketInstance.on("team_data", (teams: TeamData[]) => {
-      const sortedTeams = teams.sort((a, b) => b.totalScore - a.totalScore);
-      setTeamData(sortedTeams);
+    socketInstance.on("friend_data", (data: FriendData[]) => {
+      const sorted = [...data].sort((a, b) => b.totalScore - a.totalScore);
+      setFriends(sorted.slice(0, 10));
+      setLoadError("");
     });
 
-    socketInstance.on("user_data", (users: UserData[]) => {
-      const sortedUsers = users.sort((a, b) => b.score - a.score);
-      setUserData(sortedUsers);
+    socketInstance.on("team_data", (data: FriendData[]) => {
+      const sorted = [...data].sort((a, b) => b.totalScore - a.totalScore);
+      setFriends(sorted.slice(0, 10));
+      setLoadError("");
     });
 
     return () => {
+      socketInstance.off("friend_data");
       socketInstance.off("team_data");
-      socketInstance.off("user_data");
-      socketInstance.off("connect");
-      // socketInstance.off("disconnect");
-      socketInstance.off("connect_error");
-      socketInstance.io.off("reconnect_attempt");
-      // socketInstance.disconnect();
+      socketInstance.disconnect();
     };
   }, []);
 
-  const handleScoreUpdate = (index: number) => {
-    if (!reasons[index] || !scores[index] || !socket) return;
-
-    socket.emit(
-      "team_score_update",
-      teamData[index]?.name,
-      reasons[index],
-      Number(scores[index])
-    );
-
-    // 입력 필드 초기화
-    const newReasons = [...reasons];
-    const newScores = [...scores];
-    newReasons[index] = "";
-    newScores[index] = "";
-    setReasons(newReasons);
-    setScores(newScores);
-  };
-
-  const handleSoloScoreUpdate = (index: number) => {
-    if (!soloReasons[index] || !soloScores[index] || !socket) return;
-
-    socket.emit(
-      "solo_score_update",
-      userData[index]?.name,
-      soloReasons[index],
-      Number(soloScores[index])
-    );
-
-    // 입력 필드 초기화
-    const newReasons = [...soloReasons];
-    const newScores = [...soloScores];
-    newReasons[index] = "";
-    newScores[index] = "";
-    setSoloReasons(newReasons);
-    setSoloScores(newScores);
-  };
-
-  const handleTeamClick = async (teamName: string | undefined) => {
-    if (!teamName) return;
-
+  const openHistory = async (friend: FriendData) => {
     try {
-      const response = await fetch(`/api/teamScore?name=${teamName}`);
-      if (!response.ok) throw new Error("Failed to fetch");
-
-      const data = await response.json();
-      setSelectedTeamHistory(data);
-      setSelectedTeamName(teamName);
-      setIsModalOpen(true);
+      const response = await fetch(`/api/friend-scores?friendId=${friend._id}`);
+      if (!response.ok) throw new Error("Failed to fetch history");
+      const data = (await response.json()) as FriendScoreHistory[];
+      setSelectedFriend(friend);
+      setHistory(data);
     } catch (error) {
-      console.error("Team history fetch error:", error);
+      console.error("Friend history fetch error:", error);
+      setLoadError("점수 기록을 불러오지 못했어요.");
     }
   };
 
-  const handleUserClick = async (userName: string) => {
-    try {
-      const response = await fetch(`/api/scores?name=${userName}`);
-      if (!response.ok) throw new Error("Failed to fetch");
+  const handleScoreUpdate = () => {
+    if (!session?.user?.role || session.user.role !== "admin") return;
+    if (!selectedFriend || !reason.trim() || !score || !socket) return;
 
-      const data = await response.json();
-      setSelectedUserHistory(data);
-      setSelectedUserName(userName);
-      setIsModalOpen(true);
-    } catch (error) {
-      console.error("User history fetch error:", error);
-    }
+    socket.emit(
+      "friend_score_update",
+      selectedFriend._id,
+      selectedFriend.name,
+      reason.trim(),
+      Number(score)
+    );
+
+    setReason("");
+    setScore("");
   };
 
   return (
     <AllContainer>
       <Container>
-        <TabContainer>
-          <TabButton
-            $isActive={activeTab === "team"}
-            onClick={() => setActiveTab("team")}
-          >
-            TEAM
-          </TabButton>
-          <TabButton
-            $isActive={activeTab === "solo"}
-            onClick={() => setActiveTab("solo")}
-          >
-            SOLO
-          </TabButton>
-        </TabContainer>
-        <ContentContainer>
-          {activeTab === "team" ? (
-            <TeamScoreContainer>
-              {[0, 1, 2].map((index) => (
-                <React.Fragment key={index}>
-                  <RankSection
-                    onClick={() =>
-                      teamData[index]?.name &&
-                      handleTeamClick(teamData[index].name)
-                    }
-                  >
-                    <IconWrapper>
-                      <GiTrophyCup
-                        size={index === 0 ? 40 : 32}
-                        color={
-                          index === 0
-                            ? "#FFD700"
-                            : index === 1
-                            ? "#C0C0C0"
-                            : "#CD7F32"
-                        }
-                      />
-                    </IconWrapper>
-                    <TeamName>{teamData[index]?.name || "-"}</TeamName>
-                    <ScoreText>{teamData[index]?.totalScore || 0}</ScoreText>
-                  </RankSection>
-                  {session?.user?.role === "admin" && (
-                    <ScoreUpdateForm>
-                      <ReasonInput
-                        placeholder="점수 추가 사유"
-                        value={reasons[index]}
-                        onChange={(e: { target: { value: string } }) => {
-                          const newReasons = [...reasons];
-                          newReasons[index] = e.target.value;
-                          setReasons(newReasons);
-                        }}
-                      />
-                      <ScoreInput
-                        type="number"
-                        placeholder="점수"
-                        value={scores[index]}
-                        onChange={(e: { target: { value: string } }) => {
-                          const newScores = [...scores];
-                          newScores[index] = e.target.value;
-                          setScores(newScores);
-                        }}
-                      />
-                      <AddButton
-                        disabled={!reasons[index] || !scores[index]}
-                        onClick={() => handleScoreUpdate(index)}
-                        $isActive={!!reasons[index] && !!scores[index]}
-                      >
-                        Done
-                      </AddButton>
-                    </ScoreUpdateForm>
-                  )}
-                  {index < 2 && <Divider />}
-                </React.Fragment>
-              ))}
-            </TeamScoreContainer>
-          ) : (
-            <SoloScoreContainer>
-              {userData.map((user, index) => (
-                <React.Fragment key={user.name}>
-                  <ScoreRow
-                    rank={index + 1}
-                    onClick={() => handleUserClick(user.name)}
-                    style={{ cursor: "pointer" }}
-                  >
-                    <RankInfo>
-                      {index < 3 ? (
-                        <IconWrapper>
-                          <GiTrophyCup
-                            size={index === 0 ? 28 : 24}
-                            color={
-                              index === 0
-                                ? "#FFD700"
-                                : index === 1
-                                ? "#C0C0C0"
-                                : "#CD7F32"
-                            }
-                          />
-                        </IconWrapper>
-                      ) : (
-                        <RankNumber>{index + 1}</RankNumber>
-                      )}
-                    </RankInfo>
-                    <UserName>{user.name}</UserName>
-                    <UserScore>{user.score}</UserScore>
-                  </ScoreRow>
-                  {session?.user?.role === "admin" && (
-                    <ScoreUpdateForm>
-                      <ReasonInput
-                        placeholder="점수 추가 사유"
-                        value={soloReasons[index] || ""}
-                        onChange={(e: { target: { value: string } }) => {
-                          const newReasons = [...soloReasons];
-                          newReasons[index] = e.target.value;
-                          setSoloReasons(newReasons);
-                        }}
-                      />
-                      <ScoreInput
-                        type="number"
-                        placeholder="점수"
-                        value={soloScores[index] || ""}
-                        onChange={(e: { target: { value: string } }) => {
-                          const newScores = [...soloScores];
-                          newScores[index] = e.target.value;
-                          setSoloScores(newScores);
-                        }}
-                      />
-                      <AddButton
-                        disabled={!soloReasons[index] || !soloScores[index]}
-                        onClick={() => handleSoloScoreUpdate(index)}
-                        $isActive={!!soloReasons[index] && !!soloScores[index]}
-                      >
-                        Done
-                      </AddButton>
-                    </ScoreUpdateForm>
-                  )}
-                  {index < userData.length - 1 && <Divider />}
-                </React.Fragment>
-              ))}
-            </SoloScoreContainer>
-          )}
-        </ContentContainer>
+        <TitleRow>
+          <Title>단짝 스코어</Title>
+          <SubTitle>TOP 10</SubTitle>
+        </TitleRow>
+
+        <ListContainer>
+          {loadError ? (
+            <StateMessage title="문제가 발생했어요" description={loadError} />
+          ) : null}
+          {!friends.length && !loadError ? (
+            <StateMessage title="아직 점수 데이터가 없어요" description="단짝 점수가 생성되면 여기에 표시됩니다." />
+          ) : null}
+          {friends.map((friend, index) => (
+            <FriendRow key={friend._id} onClick={() => openHistory(friend)}>
+              <LeftBox>
+                {index < 3 ? (
+                  <GiTrophyCup
+                    size={24}
+                    color={index === 0 ? "#FFD700" : index === 1 ? "#C0C0C0" : "#CD7F32"}
+                  />
+                ) : (
+                  <RankText>{index + 1}</RankText>
+                )}
+                <FriendName>{friend.name}</FriendName>
+              </LeftBox>
+              <ScoreText>{friend.totalScore}</ScoreText>
+            </FriendRow>
+          ))}
+        </ListContainer>
       </Container>
 
-      {isModalOpen && (
+      {selectedFriend && (
         <Modal>
           <ModalContent>
             <ModalHeader>
-              <ModalTitle>
-                {selectedTeamName || selectedUserName} 점수 기록
-              </ModalTitle>
+              <ModalTitle>{selectedFriend.name} 점수 기록</ModalTitle>
               <CloseButton
                 onClick={() => {
-                  setIsModalOpen(false);
-                  setSelectedTeamName("");
-                  setSelectedUserName("");
+                  setSelectedFriend(null);
+                  setHistory([]);
                 }}
               >
                 ×
               </CloseButton>
             </ModalHeader>
+
+            {session?.user?.role === "admin" && (
+              <ScoreUpdateForm>
+                <ReasonInput
+                  placeholder="점수 사유"
+                  value={reason}
+                  onChange={(event) => setReason(event.target.value)}
+                />
+                <ScoreInput
+                  type="number"
+                  placeholder="점수"
+                  value={score}
+                  onChange={(event) => setScore(event.target.value)}
+                />
+                <AddButton
+                  $isActive={Boolean(reason.trim()) && Boolean(score)}
+                  onClick={handleScoreUpdate}
+                  disabled={!reason.trim() || !score}
+                >
+                  반영
+                </AddButton>
+              </ScoreUpdateForm>
+            )}
+
             <HistoryList>
-              {(selectedTeamHistory.length > 0
-                ? selectedTeamHistory
-                : selectedUserHistory
-              ).map((history, index) => (
-                <HistoryItem key={index}>
-                  <HistoryLog>{history.updateLog}</HistoryLog>
+              {history.map((item, index) => (
+                <HistoryItem key={`${item.createdAt}-${index}`}>
+                  <HistoryLog>{item.updateLog}</HistoryLog>
                   <HistoryScore>
-                    {history.score > 0 ? `+${history.score}` : history.score}
+                    {item.score > 0 ? `+${item.score}` : item.score}
                   </HistoryScore>
                 </HistoryItem>
               ))}
@@ -351,386 +176,170 @@ const ScoreAdmin = () => {
   );
 };
 
-const TabContainer = styled.div`
-  display: flex;
-  width: 100%;
-  height: 100px;
-  position: relative;
-
-  &::after {
-    content: "";
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: 1px;
-    background-color: ${colors.grayscale.$04};
-  }
-`;
-
-const TabButton = styled.button<{ $isActive: boolean }>`
-  width: 50%;
-  height: 100%;
-  border: none;
-  background-color: transparent;
-  color: ${(props) =>
-    props.$isActive ? colors.grayscale.$11 : colors.grayscale.$07};
-  font-family: ${fonts.pretendard.$700};
-  font-size: 28px;
-  letter-spacing: 1px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  position: relative;
-
-  &::after {
-    content: "";
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: 4px;
-    background-color: ${(props) =>
-      props.$isActive ? colors.grayscale.$11 : "transparent"};
-    transition: all 0.3s ease;
-  }
-
-  &:hover {
-    color: ${colors.grayscale.$11};
-  }
-
-  &:first-child {
-    border-top-left-radius: 16px;
-  }
-
-  &:last-child {
-    border-top-right-radius: 16px;
-  }
-`;
-
-const ContentContainer = styled.div`
-  height: calc(100% - 100px);
-  width: 100%;
-  font-family: ${fonts.pretendard.$700};
-  padding: 32px;
-  background-color: ${colors.grayscale.$02};
-  transition: all 0.3s ease;
-  opacity: 0;
-  animation: fadeIn 0.3s ease forwards;
-
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-      transform: translateY(10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-`;
-
 const AllContainer = styled.div`
-  padding: 50px 16px 150px 16px;
+  padding: 36px 16px 120px;
 `;
 
 const Container = styled.div`
-  height: 75vh;
-  background-color: ${colors.grayscale.$02};
-  border-radius: 16px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-  overflow: hidden;
+  border-radius: 20px;
+  background: ${colors.secondary.white};
+  padding: 18px;
+  box-shadow: 0 12px 26px rgba(25, 25, 25, 0.14);
 `;
 
-const TeamScoreContainer = styled.div`
+const TitleRow = styled.div`
   display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  gap: 24px;
-  padding: 20px;
-  height: 90%;
-
-  & > div:first-child {
-    margin-top: auto;
-  }
-
-  & > div:last-child {
-    margin-bottom: auto;
-  }
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 12px;
 `;
 
-const RankSection = styled.div`
-  display: flex;
-  align-items: center;
-  padding: 16px 32px;
-  background-color: ${colors.grayscale.$01};
-  border-radius: 12px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  width: 100%;
-  min-width: 300px;
-  &:active {
-    transform: scale(1.05);
-    transition: transform 0.2s ease;
-  }
-`;
-
-const IconWrapper = styled.div`
-  display: flex;
-  align-items: center;
-  margin-right: 16px;
-`;
-
-const TeamName = styled.span`
-  font-family: ${fonts.pretendard.$600};
-  font-size: 24px;
-  color: ${colors.grayscale.$11};
-  flex: 1;
-`;
-
-const ScoreText = styled.span`
-  font-family: ${fonts.pretendard.$700};
-  font-size: 30px;
-  color: ${colors.grayscale.$11};
-  margin-left: 16px;
-`;
-
-const Divider = styled.div`
-  width: 100%;
-  height: 1px;
-  border: 1px dashed ${colors.grayscale.$04};
-`;
-
-const SoloScoreContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 24px;
-  padding-top: 5px;
-  height: 90%;
-  overflow-y: auto;
-
-  &::-webkit-scrollbar {
-    display: none;
-  }
-`;
-
-const ScoreRow = styled.div<{ rank: number }>`
-  display: flex;
-  align-items: center;
-  padding: 16px 24px;
-  background-color: ${colors.grayscale.$01};
-  border-radius: 12px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  width: 100%;
-  transition: transform 0.2s ease;
-`;
-
-const RankInfo = styled.div`
-  display: flex;
-  align-items: center;
-  margin-right: 16px;
-  width: 40px;
-`;
-
-const RankNumber = styled.span`
+const Title = styled.h1`
+  margin: 0;
   font-family: ${fonts.pretendard.$700};
   font-size: 24px;
-  color: ${colors.grayscale.$11};
+  color: ${colors.secondary.black};
 `;
 
-const UserName = styled.span`
-  font-family: ${fonts.pretendard.$600};
-  font-size: 18px;
-  color: ${colors.grayscale.$11};
-  flex: 1;
+const SubTitle = styled.div`
+  font-family: ${fonts.pretendard.$500};
+  color: ${colors.grayscale.$06};
 `;
 
-const UserScore = styled.span`
-  font-family: ${fonts.pretendard.$700};
-  font-size: 30px;
-  color: ${colors.grayscale.$11};
-  margin-left: 16px;
+const ListContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 `;
 
-const ScoreInput = styled.input`
-  width: 80px;
-  height: 48px;
-  border: 1px solid ${colors.grayscale.$04};
-  border-radius: 8px;
-  background: ${colors.grayscale.$01};
-  padding: 0 12px;
-  font-family: ${fonts.pretendard.$600};
-  font-size: 16px;
-  color: ${colors.grayscale.$11};
+const FriendRow = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: ${colors.grayscale.$10};
+  border-radius: 14px;
+  padding: 14px 12px;
+  cursor: pointer;
+`;
+
+const LeftBox = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+`;
+
+const RankText = styled.div`
+  width: 24px;
   text-align: center;
-  -moz-appearance: textfield;
-
-  &::-webkit-outer-spin-button,
-  &::-webkit-inner-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-  }
-
-  &:focus {
-    outline: none;
-    border-color: ${colors.grayscale.$07};
-  }
-
-  &::placeholder {
-    color: ${colors.grayscale.$07};
-  }
+  font-family: ${fonts.pretendard.$700};
+  color: ${colors.secondary.black};
 `;
 
-const ReasonInput = styled.input`
-  flex: 1;
-  height: 48px;
-  border: 1px solid ${colors.grayscale.$04};
-  border-radius: 8px;
-  background: ${colors.grayscale.$01};
-  padding: 0 12px;
+const FriendName = styled.div`
   font-family: ${fonts.pretendard.$600};
-  font-size: 16px;
-  color: ${colors.grayscale.$11};
-
-  &:focus {
-    outline: none;
-    border-color: ${colors.grayscale.$07};
-  }
-
-  &::placeholder {
-    color: ${colors.grayscale.$07};
-  }
+  color: ${colors.secondary.black};
 `;
 
-const AddButton = styled.button<{ $isActive: boolean }>`
-  height: 48px;
-  padding: 0 16px;
-  border: none;
-  border-radius: 8px;
-  background: ${(props) =>
-    props.$isActive
-      ? `linear-gradient(145deg, ${colors.grayscale.$07}, ${colors.grayscale.$08})`
-      : `linear-gradient(145deg, ${colors.grayscale.$03}, ${colors.grayscale.$04})`};
-  color: ${colors.grayscale.$11};
-  font-family: ${fonts.pretendard.$600};
-  font-size: 14px;
-  cursor: ${(props) => (props.$isActive ? "pointer" : "not-allowed")};
-  transition: all 0.2s ease;
-  opacity: ${(props) => (props.$isActive ? 1 : 0.7)};
-
-  &:hover {
-    transform: ${(props) => (props.$isActive ? "translateY(-2px)" : "none")};
-    box-shadow: ${(props) =>
-      props.$isActive ? "0 2px 4px rgba(0, 0, 0, 0.1)" : "none"};
-  }
-
-  &:active {
-    transform: ${(props) => (props.$isActive ? "translateY(0)" : "none")};
-  }
-`;
-const ScoreUpdateForm = styled.div`
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  margin-top: -12px;
-  padding: 0 10px 0 32px;
+const ScoreText = styled.div`
+  font-family: ${fonts.pretendard.$700};
+  color: ${colors.secondary.black};
+  font-size: 22px;
 `;
 
 const Modal = styled.div`
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.5);
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
   display: flex;
-  justify-content: center;
   align-items: center;
-  z-index: 1000;
+  justify-content: center;
+  z-index: 300;
 `;
 
 const ModalContent = styled.div`
-  background: ${colors.grayscale.$03};
-  border-radius: 16px;
-  width: 90%;
-  max-width: 500px;
+  width: min(560px, calc(100% - 24px));
   max-height: 80vh;
-  overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  overflow: auto;
+  background: ${colors.secondary.white};
+  border-radius: 18px;
 `;
 
 const ModalHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px;
-  border-bottom: 1px solid ${colors.grayscale.$06};
+  padding: 16px;
+  border-bottom: 1px solid ${colors.grayscale.$09};
 `;
 
 const ModalTitle = styled.h2`
-  font-family: ${fonts.pretendard.$600};
-  font-size: 20px;
-  color: ${colors.grayscale.$11};
   margin: 0;
+  font-family: ${fonts.pretendard.$700};
+  font-size: 20px;
 `;
 
 const CloseButton = styled.button`
-  background: none;
   border: none;
+  background: transparent;
   font-size: 24px;
-  color: ${colors.grayscale.$11};
   cursor: pointer;
-  padding: 0;
+`;
+
+const ScoreUpdateForm = styled.div`
+  display: flex;
+  gap: 8px;
+  padding: 14px 16px;
+`;
+
+const ReasonInput = styled.input`
+  flex: 1;
+  border: 1px solid ${colors.grayscale.$08};
+  border-radius: 10px;
+  height: 42px;
+  padding: 0 10px;
+`;
+
+const ScoreInput = styled.input`
+  width: 88px;
+  border: 1px solid ${colors.grayscale.$08};
+  border-radius: 10px;
+  height: 42px;
+  padding: 0 10px;
+`;
+
+const AddButton = styled.button<{ $isActive: boolean }>`
+  border: none;
+  border-radius: 10px;
+  padding: 0 14px;
+  font-family: ${fonts.pretendard.$600};
+  background: ${(props) => (props.$isActive ? colors.primary.$01 : colors.grayscale.$08)};
+  color: ${colors.secondary.white};
+  cursor: ${(props) => (props.$isActive ? "pointer" : "not-allowed")};
 `;
 
 const HistoryList = styled.div`
-  padding: 20px;
-  overflow-y: auto;
-  max-height: 60vh;
-
-  &::-webkit-scrollbar {
-    width: 8px;
-  }
-
-  &::-webkit-scrollbar-track {
-    background: ${colors.grayscale.$02};
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background: ${colors.grayscale.$04};
-    border-radius: 4px;
-  }
+  padding: 0 16px 16px;
 `;
 
 const HistoryItem = styled.div`
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  padding: 12px;
-  border-bottom: 1px solid ${colors.grayscale.$01};
-
-  &:last-child {
-    border-bottom: none;
-  }
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid ${colors.grayscale.$09};
 `;
 
-const HistoryLog = styled.span`
-  font-family: ${fonts.pretendard.$500};
-  font-size: 16px;
-  color: ${colors.grayscale.$11};
+const HistoryLog = styled.div`
+  color: ${colors.secondary.black};
 `;
 
-const HistoryScore = styled.span`
-  font-family: ${fonts.pretendard.$600};
-  font-size: 18px;
-  color: ${colors.grayscale.$11};
-  margin-left: 16px;
+const HistoryScore = styled.div`
+  font-family: ${fonts.pretendard.$700};
+  color: ${colors.secondary.black};
 `;
 
-ScoreAdmin.getLayout = function getLayout(page: ReactElement) {
+ScorePage.getLayout = function getLayout(page: ReactElement) {
   return <Layout>{page}</Layout>;
 };
 
-export default ScoreAdmin;
+export default ScorePage;

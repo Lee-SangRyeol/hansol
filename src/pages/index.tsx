@@ -26,11 +26,11 @@ const avatarImageStyle = {
   userSelect: "none" as const,
 };
 
-/** 홈 상단 CORAM DEO 로고 — 말풍선·카드와 겹치지 않게 작게 */
+/** 화면 좌측 상단 고정 로고 크기 */
 const homeCoramLogoStyle: CSSProperties = {
   width: "auto",
-  height: "clamp(32px, 8.5vw, 40px)",
-  maxWidth: "min(200px, 55vw)",
+  height: "clamp(128px, 34vw, 160px)",
+  maxWidth: "min(560px, 92vw)",
   objectFit: "contain",
 };
 
@@ -65,6 +65,7 @@ const Index = () => {
   const [loadError, setLoadError] = useState("");
   const [matchingTextStep, setMatchingTextStep] = useState(0);
   const [secretModalOpen, setSecretModalOpen] = useState(false);
+  const [partnerTmiOpen, setPartnerTmiOpen] = useState(false);
   const isWaiting = !me?.friendId || !me.friend;
 
   const secretTapCountRef = useRef(0);
@@ -96,6 +97,10 @@ const Index = () => {
     },
     []
   );
+
+  useEffect(() => {
+    setPartnerTmiOpen(false);
+  }, [me?.partner?.id]);
 
   useEffect(() => {
     secretTapCountRef.current = 0;
@@ -164,77 +169,82 @@ const Index = () => {
 
   if (status === "loading" || (status === "authenticated" && isChecking)) {
     return (
-      <BackgroundWrapper>
-        <HomeVerticalStack>
-          <HomeLogoBar>
-            <Image
-              src="/pngs/coram__logo.png"
-              alt="CORAM DEO"
-              width={480}
-              height={160}
-              sizes="200px"
-              draggable={false}
-              style={homeCoramLogoStyle}
-            />
-          </HomeLogoBar>
-          <HomeCard $isWaiting={false}>
-            <StateMessage
-              title="불러오는 중..."
-              description="홈 상태를 확인하고 있어요."
-            />
-          </HomeCard>
-        </HomeVerticalStack>
-      </BackgroundWrapper>
-    );
-  }
-
-  if (status === "unauthenticated") {
-    return (
-      <BackgroundWrapper>
-        <HomeVerticalStack>
-          <HomeLogoBar>
-            <Image
-              src="/pngs/coram__logo.png"
-              alt="CORAM DEO"
-              width={480}
-              height={160}
-              sizes="200px"
-              draggable={false}
-              style={homeCoramLogoStyle}
-            />
-          </HomeLogoBar>
-          <HomeCard $isWaiting={false}>
-            <CenterBox>
-              <MainTitle>코람엠티</MainTitle>
-              <SubText>
-                카카오 로그인 후 단짝 상태를 확인할 수 있어요.
-              </SubText>
-              <KakaoButton onClick={() => signInKakaoAppFirst("/")}>
-                <RiKakaoTalkFill size={20} />
-                카카오 로그인
-              </KakaoButton>
-            </CenterBox>
-          </HomeCard>
-        </HomeVerticalStack>
-      </BackgroundWrapper>
-    );
-  }
-
-  return (
-    <BackgroundWrapper>
-      <HomeVerticalStack>
-        <HomeLogoBar>
+      <>
+        <FixedCornerLogo>
           <Image
             src="/pngs/coram__logo.png"
             alt="CORAM DEO"
             width={480}
             height={160}
-            sizes="200px"
+            sizes="(max-width: 480px) 92vw, 560px"
             draggable={false}
-            style={homeCoramLogoStyle}
-            priority
+            style={{ ...homeCoramLogoStyle, pointerEvents: "none" }}
           />
-        </HomeLogoBar>
+        </FixedCornerLogo>
+        <BackgroundWrapper>
+          <HomeVerticalStack>
+            <HomeCard $isWaiting={false}>
+              <StateMessage
+                title="불러오는 중..."
+                description="홈 상태를 확인하고 있어요."
+              />
+            </HomeCard>
+          </HomeVerticalStack>
+        </BackgroundWrapper>
+      </>
+    );
+  }
+
+  if (status === "unauthenticated") {
+    return (
+      <>
+        <FixedCornerLogo>
+          <Image
+            src="/pngs/coram__logo.png"
+            alt="CORAM DEO"
+            width={480}
+            height={160}
+            sizes="(max-width: 480px) 92vw, 560px"
+            draggable={false}
+            style={{ ...homeCoramLogoStyle, pointerEvents: "none" }}
+          />
+        </FixedCornerLogo>
+        <BackgroundWrapper>
+          <HomeVerticalStack>
+            <HomeCard $isWaiting={false}>
+              <CenterBox>
+                <MainTitle>코람엠티</MainTitle>
+                <SubText>
+                  카카오 로그인 후 단짝 상태를 확인할 수 있어요.
+                </SubText>
+                <KakaoButton onClick={() => signInKakaoAppFirst("/")}>
+                  <RiKakaoTalkFill size={20} />
+                  카카오 로그인
+                </KakaoButton>
+              </CenterBox>
+            </HomeCard>
+          </HomeVerticalStack>
+        </BackgroundWrapper>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <FixedCornerLogo>
+        <Image
+          src="/pngs/coram__logo.png"
+          alt="CORAM DEO"
+          width={480}
+          height={160}
+          sizes="(max-width: 480px) 92vw, 560px"
+          draggable={false}
+          priority
+          style={{ ...homeCoramLogoStyle, pointerEvents: "none" }}
+        />
+      </FixedCornerLogo>
+      <BackgroundWrapper>
+        <HomeVerticalStack>
         <HomeCard $isWaiting={isWaiting}>
         {loadError ? (
           <StateMessage title="문제가 발생했어요" description={loadError} />
@@ -265,25 +275,20 @@ const Index = () => {
           </WaitingScene>
         ) : (
           <MatchedScene>
-            <StatusLabel>단짝 매칭 완료</StatusLabel>
-            <MatchedProfileCluster>
+            <MatchedSceneTopBar>
+              <StatusLabel $shrinkTitle>단짝 매칭 완료</StatusLabel>
               {me.partner ? (
-                <PartnerTmiFloatShell
-                  aria-label={`${me.partner.name} 님의 최근 TMI`}
+                <TmiToggleButton
+                  type="button"
+                  aria-expanded={partnerTmiOpen}
+                  aria-controls="partner-tmi-panel"
+                  onClick={() => setPartnerTmiOpen((previous) => !previous)}
                 >
-                  <PartnerTmiKicker>
-                    {me.partner.name} 님의 TMI
-                  </PartnerTmiKicker>
-                  <PartnerTmiFloatScroll>
-                    <PartnerTmiText>
-                      {me.partner.tmi?.trim()
-                        ? me.partner.tmi.trim()
-                        : "아직 TMI를 남기지 않았어요."}
-                    </PartnerTmiText>
-                  </PartnerTmiFloatScroll>
-                </PartnerTmiFloatShell>
+                  TMI
+                </TmiToggleButton>
               ) : null}
-              <MatchedImageRow>
+            </MatchedSceneTopBar>
+            <MatchedImageRow>
               <MatchedImageFrame role="presentation">
                 {me.image ? (
                   <Image
@@ -318,7 +323,6 @@ const Index = () => {
                 )}
               </MatchedImageFrame>
             </MatchedImageRow>
-            </MatchedProfileCluster>
             <MatchedNames>{`${me.name} ---- ❤️ ---- ${
               me.partner?.name ?? "단짝"
             }`}</MatchedNames>
@@ -330,6 +334,24 @@ const Index = () => {
         )}
       </HomeCard>
       </HomeVerticalStack>
+      </BackgroundWrapper>
+
+      {partnerTmiOpen && me?.partner ? (
+        <PartnerTmiFloatShell
+          id="partner-tmi-panel"
+          role="region"
+          aria-label={`${me.partner.name} 님의 최근 TMI`}
+        >
+          <PartnerTmiKicker>{me.partner.name} 님의 TMI</PartnerTmiKicker>
+          <PartnerTmiFloatScroll>
+            <PartnerTmiText>
+              {me.partner.tmi?.trim()
+                ? me.partner.tmi.trim()
+                : "아직 TMI를 남기지 않았어요."}
+            </PartnerTmiText>
+          </PartnerTmiFloatScroll>
+        </PartnerTmiFloatShell>
+      ) : null}
 
       {secretModalOpen && me?.partner ? (
         <SecretModalBackdrop role="presentation">
@@ -362,7 +384,7 @@ const Index = () => {
           </SecretModalCard>
         </SecretModalBackdrop>
       ) : null}
-    </BackgroundWrapper>
+    </>
   );
 };
 
@@ -383,16 +405,14 @@ const HomeVerticalStack = styled.div`
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: clamp(14px, 3.5vw, 20px);
 `;
 
-const HomeLogoBar = styled.div`
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  flex-shrink: 0;
-  user-select: none;
-  -webkit-user-select: none;
+const FixedCornerLogo = styled.div`
+  position: fixed;
+  top: max(12px, env(safe-area-inset-top, 0px));
+  left: max(12px, env(safe-area-inset-left, 0px));
+  z-index: 90;
+  pointer-events: none;
 `;
 
 const HomeCard = styled.div<{ $isWaiting: boolean }>`
@@ -409,10 +429,16 @@ const HomeCard = styled.div<{ $isWaiting: boolean }>`
   overflow: visible;
 `;
 
-const StatusLabel = styled.div`
+const StatusLabel = styled.div<{ $shrinkTitle?: boolean }>`
   font-family: ${fonts.pretendard.$600};
   font-size: 14px;
   color: ${colors.primary.$01};
+  ${(p) =>
+    p.$shrinkTitle &&
+    `
+    flex: 1;
+    min-width: 0;
+  `}
 `;
 
 const MainTitle = styled.h1`
@@ -464,27 +490,51 @@ const MatchedScene = styled.div`
   gap: 0;
 `;
 
-/* 프로필 행 높이만 레이아웃에 포함, 말풍선은 absolute로 위에 얹음 */
-const MatchedProfileCluster = styled.div`
-  position: relative;
-  width: 100%;
+const MatchedSceneTopBar = styled.div`
   display: flex;
-  justify-content: center;
-  margin-top: 12px;
-  z-index: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  flex-shrink: 0;
+`;
+
+const TmiToggleButton = styled.button`
+  flex-shrink: 0;
+  margin: 0;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid ${colors.grayscale.$09};
+  background: ${colors.secondary.white};
+  box-shadow: 0 6px 16px rgba(25, 25, 25, 0.08);
+  font-family: ${fonts.pretendard.$600};
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  color: ${colors.primary.$01};
+  cursor: pointer;
+  touch-action: manipulation;
+
+  &:focus-visible {
+    outline: 2px solid ${colors.primary.$02};
+    outline-offset: 2px;
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
 `;
 
 const PartnerTmiFloatShell = styled.div`
-  position: absolute;
-  left: 0;
-  right: 0;
-  /* 프로필 사진 상단과 꼬리 끝이 겹치지 않도록 여유 */
-  bottom: calc(100% + 42px);
-  z-index: 4;
+  position: fixed;
+  top: max(108px, calc(env(safe-area-inset-top, 0px) + 92px));
+  right: calc(14px + env(safe-area-inset-right, 0px));
+  left: auto;
+  z-index: 120;
   display: flex;
   flex-direction: column;
   gap: 10px;
   padding: 18px 20px 20px;
+  width: min(300px, calc(100vw - 28px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)));
   border-radius: 20px;
   background: linear-gradient(
     165deg,
@@ -496,15 +546,13 @@ const PartnerTmiFloatShell = styled.div`
   box-shadow: 0 12px 32px rgba(25, 25, 25, 0.14);
   box-sizing: border-box;
   max-height: min(40vh, 300px);
-  pointer-events: auto;
 
-  /* 말풍선 본체 하단 근처에만 꼬리 (아래로 길게 늘어나지 않음) */
   &::after {
     content: "";
     position: absolute;
-    left: calc(50% + 71px);
-    bottom: -5px;
-    transform: translateX(-50%) rotate(45deg);
+    left: -7px;
+    top: 70%;
+    transform: translateY(-50%) rotate(45deg);
     width: 14px;
     height: 14px;
     background: linear-gradient(
@@ -512,17 +560,10 @@ const PartnerTmiFloatShell = styled.div`
       ${colors.secondary.$01} 45%,
       ${colors.grayscale.$11} 100%
     );
-    border-right: 1px solid ${colors.grayscale.$09};
+    border-left: 1px solid ${colors.grayscale.$09};
     border-bottom: 1px solid ${colors.grayscale.$09};
-    border-radius: 0 0 3px 0;
+    border-radius: 0 0 0 3px;
     box-sizing: border-box;
-  }
-
-  @media (max-width: 380px) {
-    &::after {
-      left: 71%;
-      transform: translateX(-50%) rotate(45deg);
-    }
   }
 `;
 
@@ -559,6 +600,7 @@ const MatchedImageRow = styled.div`
   justify-content: center;
   align-items: flex-end;
   gap: 14px;
+  margin-top: 14px;
 `;
 
 const MatchedImageFrame = styled.div`

@@ -37,6 +37,7 @@ const Index = () => {
   const [isChecking, setIsChecking] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [matchingTextStep, setMatchingTextStep] = useState(0);
+  const isWaiting = !me?.friendId || !me.friend;
 
   useEffect(() => {
     const interval = window.setInterval(() => {
@@ -98,7 +99,7 @@ const Index = () => {
   if (status === "loading" || (status === "authenticated" && isChecking)) {
     return (
       <BackgroundWrapper>
-        <HomeCard>
+        <HomeCard $isWaiting={false}>
           <StateMessage
             title="불러오는 중..."
             description="홈 상태를 확인하고 있어요."
@@ -111,7 +112,7 @@ const Index = () => {
   if (status === "unauthenticated") {
     return (
       <BackgroundWrapper>
-        <HomeCard>
+        <HomeCard $isWaiting={false}>
           <CenterBox>
             <MainTitle>코람엠티</MainTitle>
             <SubText>카카오 로그인 후 단짝 상태를 확인할 수 있어요.</SubText>
@@ -127,11 +128,11 @@ const Index = () => {
 
   return (
     <BackgroundWrapper>
-      <HomeCard>
+      <HomeCard $isWaiting={isWaiting}>
         {loadError ? (
           <StateMessage title="문제가 발생했어요" description={loadError} />
         ) : null}
-        {!me?.friendId || !me.friend ? (
+        {isWaiting ? (
           <WaitingScene>
             <WaitingImageCenter>
               <Image
@@ -149,24 +150,42 @@ const Index = () => {
             </WaitingTextCard>
           </WaitingScene>
         ) : (
-          <>
+          <MatchedScene>
             <StatusLabel>단짝 매칭 완료</StatusLabel>
-            <MainTitle>{me.friend.name}</MainTitle>
-            <ProfileRow>
-              <ProfileBox>
-                <Avatar>{me.name?.[0] ?? "나"}</Avatar>
-                <ProfileName>{me.name}</ProfileName>
-              </ProfileBox>
-              <ProfileBox>
-                <Avatar>{me.partner?.name?.[0] ?? "짝"}</Avatar>
-                <ProfileName>{me.partner?.name ?? "단짝"}</ProfileName>
-              </ProfileBox>
-            </ProfileRow>
-            <ScoreCard>
-              <ScoreLabel>팀 점수</ScoreLabel>
-              <ScoreValue>{me.friend.totalScore}</ScoreValue>
-            </ScoreCard>
-          </>
+            <MatchedImageRow>
+              <MatchedImageFrame>
+                {me.image ? (
+                  <Image
+                    src={me.image}
+                    alt={`${me.name} 프로필`}
+                    width={132}
+                    height={132}
+                    style={{ borderRadius: "20px", objectFit: "cover" }}
+                  />
+                ) : (
+                  <FallbackBox>NO IMAGE</FallbackBox>
+                )}
+              </MatchedImageFrame>
+              <MatchedImageFrame>
+                {me.partner?.image ? (
+                  <Image
+                    src={me.partner.image}
+                    alt={`${me.partner?.name ?? "단짝"} 프로필`}
+                    width={132}
+                    height={132}
+                    style={{ borderRadius: "20px", objectFit: "cover" }}
+                  />
+                ) : (
+                  <FallbackBox>NO IMAGE</FallbackBox>
+                )}
+              </MatchedImageFrame>
+            </MatchedImageRow>
+            <MatchedNames>{`${me.name} ---- ❤️ ---- ${me.partner?.name ?? "단짝"}`}</MatchedNames>
+            <ScoreInline>
+              <ScoreInlineLabel>짱친 점수</ScoreInlineLabel>
+              <ScoreInlineValue>{me.friend!.totalScore}</ScoreInlineValue>
+            </ScoreInline>
+          </MatchedScene>
         )}
       </HomeCard>
     </BackgroundWrapper>
@@ -182,13 +201,15 @@ const BackgroundWrapper = styled.div`
   padding: 24px;
 `;
 
-const HomeCard = styled.div`
+const HomeCard = styled.div<{ $isWaiting: boolean }>`
   width: 100%;
   max-width: 560px;
   border-radius: 24px;
-  padding: 28px;
-  background: ${colors.secondary.white};
-  box-shadow: 0 16px 40px rgba(25, 25, 25, 0.12);
+  padding: ${(props) => (props.$isWaiting ? "0" : "28px")};
+  background: ${(props) =>
+    props.$isWaiting ? "transparent" : colors.secondary.white};
+  box-shadow: ${(props) =>
+    props.$isWaiting ? "none" : "0 16px 40px rgba(25, 25, 25, 0.12)"};
   display: flex;
   flex-direction: column;
 `;
@@ -230,6 +251,13 @@ const WaitingScene = styled.div`
   justify-content: center;
 `;
 
+const MatchedScene = styled.div`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+`;
+
 const SubText = styled.p`
   margin: 0;
   font-family: ${fonts.pretendard.$400};
@@ -237,56 +265,63 @@ const SubText = styled.p`
   line-height: 1.5;
 `;
 
-const ProfileRow = styled.div`
-  display: flex;
-  gap: 12px;
-  margin-top: 8px;
-`;
-
-const ProfileBox = styled.div`
-  flex: 1;
-  border-radius: 16px;
-  background: ${colors.grayscale.$10};
-  padding: 16px;
-  text-align: center;
-`;
-
-const Avatar = styled.div`
-  width: 56px;
-  height: 56px;
-  margin: 0 auto 10px;
-  border-radius: 28px;
-  background: ${colors.primary.$02};
-  color: ${colors.secondary.white};
+const MatchedImageRow = styled.div`
   display: flex;
   justify-content: center;
-  align-items: center;
-  font-family: ${fonts.pretendard.$700};
-  font-size: 24px;
+  gap: 14px;
+  margin-top: 10px;
 `;
 
-const ProfileName = styled.div`
+const MatchedImageFrame = styled.div`
+  width: 132px;
+  height: 132px;
+  border-radius: 20px;
+  border: 2px solid ${colors.grayscale.$09};
+  background: ${colors.secondary.white};
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`;
+
+const FallbackBox = styled.div`
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-family: ${fonts.pretendard.$600};
+  font-size: 12px;
+  color: ${colors.grayscale.$06};
+  background: ${colors.grayscale.$10};
+`;
+
+const MatchedNames = styled.div`
+  margin-top: 16px;
+  text-align: center;
+  font-family: ${fonts.pretendard.$700};
+  font-size: 24px;
   color: ${colors.secondary.black};
 `;
 
-const ScoreCard = styled.div`
+const ScoreInline = styled.div`
   margin-top: 14px;
-  border-radius: 16px;
-  padding: 16px;
-  background: ${colors.primary.$01};
-  color: ${colors.secondary.white};
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  gap: 8px;
 `;
 
-const ScoreLabel = styled.div`
-  font-family: ${fonts.pretendard.$400};
-  opacity: 0.9;
+const ScoreInlineLabel = styled.div`
+  font-family: ${fonts.pretendard.$500};
+  color: ${colors.grayscale.$06};
+  font-size: 18px;
 `;
 
-const ScoreValue = styled.div`
-  margin-top: 4px;
+const ScoreInlineValue = styled.div`
   font-family: ${fonts.pretendard.$700};
-  font-size: 34px;
+  font-size: 38px;
+  color: ${colors.primary.$01};
 `;
 
 const CenterBox = styled.div`

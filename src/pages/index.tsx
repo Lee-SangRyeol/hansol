@@ -174,9 +174,9 @@ const Index = () => {
           <Image
             src="/pngs/Group 6.png"
             alt="CORAM DEO"
-            width={800}
-            height={120}
-            sizes="(max-width: 800px) 92vw, 560px"
+            width={500}
+            height={100}
+            sizes="(max-width: 500px) 92vw, 560px"
             draggable={false}
             style={{ ...homeCoramLogoStyle, pointerEvents: "none" }}
           />
@@ -202,9 +202,9 @@ const Index = () => {
           <Image
             src="/pngs/Group 6.png"
             alt="CORAM DEO"
-            width={800}
-            height={120}
-            sizes="(max-width: 800px) 92vw, 560px"
+            width={500}
+            height={100}
+            sizes="(max-width: 500px) 92vw, 560px"
             draggable={false}
             style={{ ...homeCoramLogoStyle, pointerEvents: "none" }}
           />
@@ -235,9 +235,9 @@ const Index = () => {
         <Image
           src="/pngs/Group 6.png"
           alt="CORAM DEO"
-          width={800}
-          height={120}
-          sizes="(max-width: 800px) 92vw, 560px"
+          width={500}
+          height={100}
+          sizes="(max-width: 500px) 92vw, 560px"
           draggable={false}
           priority
           style={{ ...homeCoramLogoStyle, pointerEvents: "none" }}

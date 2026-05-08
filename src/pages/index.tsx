@@ -30,7 +30,7 @@ const avatarImageStyle = {
 const homeCoramLogoStyle: CSSProperties = {
   width: "auto",
   height: "clamp(128px, 34vw, 160px)",
-  maxWidth: "min(560px, 92vw)",
+  maxWidth: "min(500px, 60vw)",
   objectFit: "contain",
 };
 

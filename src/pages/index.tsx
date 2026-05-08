@@ -176,7 +176,7 @@ const Index = () => {
             alt="CORAM DEO"
             width={500}
             height={100}
-            sizes="(max-width: 500px) 92vw, 560px"
+            sizes="(max-width: 500px) 60vw, 400px"
             draggable={false}
             style={{ ...homeCoramLogoStyle, pointerEvents: "none" }}
           />
@@ -204,7 +204,7 @@ const Index = () => {
             alt="CORAM DEO"
             width={500}
             height={100}
-            sizes="(max-width: 500px) 92vw, 560px"
+            sizes="(max-width: 500px) 60vw, 400px"
             draggable={false}
             style={{ ...homeCoramLogoStyle, pointerEvents: "none" }}
           />
@@ -237,7 +237,7 @@ const Index = () => {
           alt="CORAM DEO"
           width={500}
           height={100}
-          sizes="(max-width: 500px) 92vw, 560px"
+          sizes="(max-width: 500px) 60vw, 400px"
           draggable={false}
           priority
           style={{ ...homeCoramLogoStyle, pointerEvents: "none" }}
@@ -410,7 +410,8 @@ const HomeVerticalStack = styled.div`
 const FixedCornerLogo = styled.div`
   position: fixed;
   top: max(12px, env(safe-area-inset-top, 0px));
-  left: max(12px, env(safe-area-inset-left, 0px));
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 90;
   pointer-events: none;
 `;
